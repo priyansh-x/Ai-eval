@@ -27,19 +27,6 @@ FETCHABLE_DECK_HOSTS = ("conquestbits.org",)
 MAX_DECK_BYTES = 20 * 1024 * 1024  # 20 MB cap before we skip an attachment
 DECK_DOWNLOAD_TIMEOUT = 30
 
-# LinkedIn fetching. LinkedIn aggressively blocks bots so success rate will be
-# low; the prompt is built to fall back to Google Search when content is thin.
-LINKEDIN_FETCH_TIMEOUT = 20
-LINKEDIN_MAX_TEXT_CHARS = 15000  # cap to keep prompt size reasonable
-LINKEDIN_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    ),
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.9",
-}
-
 _client = None
 
 
@@ -373,165 +360,6 @@ def download_deck(url: str):
     return data, mime, f"downloaded {len(data)} bytes ({mime})"
 
 
-def normalize_linkedin_url(url: str) -> str | None:
-    if url == "N/A" or not url:
-        return None
-    url = url.strip()
-    if not url.lower().startswith(("http://", "https://")):
-        url = "https://" + url.lstrip("/")
-    return url
-
-
-def _strip_html(html: str) -> str:
-    """Cheap HTML -> text. No bs4 dependency."""
-    html = re.sub(r"<script.*?</script>", " ", html, flags=re.DOTALL | re.IGNORECASE)
-    html = re.sub(r"<style.*?</style>", " ", html, flags=re.DOTALL | re.IGNORECASE)
-    html = re.sub(r"<noscript.*?</noscript>", " ", html, flags=re.DOTALL | re.IGNORECASE)
-    text = re.sub(r"<[^>]+>", " ", html)
-    # decode the most common HTML entities
-    text = (text.replace("&nbsp;", " ").replace("&amp;", "&")
-            .replace("&lt;", "<").replace("&gt;", ">")
-            .replace("&quot;", '"').replace("&#39;", "'"))
-    text = re.sub(r"\s+", " ", text).strip()
-    return text
-
-
-def fetch_linkedin_text(url: str):
-    """Return (text or None, status_msg).
-    If LinkedIn blocks, returns no usable HTML, or only serves a login wall, we
-    return None and founder scoring is skipped entirely (founder fields stay NA).
-    We never fall back to Google Search for founder data.
-    """
-    try:
-        resp = requests.get(
-            url, headers=LINKEDIN_HEADERS,
-            timeout=LINKEDIN_FETCH_TIMEOUT, allow_redirects=True,
-        )
-    except requests.RequestException as e:
-        return None, f"fetch failed: {e.__class__.__name__}"
-
-    if resp.status_code != 200:
-        return None, f"fetch failed: HTTP {resp.status_code}"
-
-    text = _strip_html(resp.text)
-    # Heuristic: detect login wall / interstitial -- treat as failure (no signal).
-    login_markers = (
-        "sign in to linkedin", "join linkedin", "join now to see",
-        "to view this profile", "authwall",
-    )
-    lowered = text[:2000].lower()
-    if any(marker in lowered for marker in login_markers) and len(text) < 4000:
-        return None, "login wall (no usable profile content)"
-
-    if len(text) < 200:
-        return None, f"empty/thin response ({len(text)} chars)"
-
-    return text[:LINKEDIN_MAX_TEXT_CHARS], f"fetched {len(text)} chars"
-
-
-def build_founder_prompt(row, linkedin_text: str) -> str:
-    """Build the founder-eval prompt. Only called when we have real LinkedIn content."""
-    founder_name = safe(row.get("Full Name"))
-    startup_name = safe(row.get("Startup Name"))
-    sector = safe(row.get("Sector"))
-    linkedin_url = safe(row.get("LinkedIn"))
-
-    return f"""
-You are a disciplined VC analyst evaluating a startup's PRIMARY FOUNDER based
-STRICTLY on the LinkedIn profile content provided below. Do NOT use any other
-source, do NOT search the web, do NOT speculate beyond what is in the text.
-
-==================================================================================
-ANTI-BIAS GUARDRAILS — READ AND APPLY BEFORE SCORING
-==================================================================================
-1. EVIDENCE-ONLY. Score only on facts present in the LinkedIn text. If a fact
-   (school, year, role, exit) is not in the text, mark it 'unknown' — never infer.
-2. NO GENDER / ETHNICITY / NAME INFERENCE. Do not infer or weight the founder's
-   gender, ethnicity, religion, or national origin from their name or photo.
-3. NO PEDIGREE INFLATION. A top-tier school alone, without role/experience, caps
-   at 6. A Stanford BA with no relevant work history is a 4-5, not an 8.
-4. DOMAIN-FIT MATTERS. A top-tier generalist outside their sector caps at 7
-   unless they have demonstrated domain depth. A mid-tier-school founder with
-   deep domain expertise can score 8+.
-5. SCHOOL NEUTRALITY. Non-Indian, non-Western, or less-famous schools are NOT
-   penalized — score on the role/experience evidence, not the school's brand.
-6. PRIOR FOUNDING WEIGHTS HEAVILY. Any prior founding experience (even failed)
-   is a positive signal. A prior EXIT is a strong positive.
-7. RECENT-GRAD CAP. A current student or recent graduate (<2 yrs work) caps at 5,
-   regardless of school, unless they have prior founding experience or
-   significant verifiable achievements in the text.
-8. CALIBRATION. Most founders should score 4-6. Scores of 9-10 are RARE.
-9. CONSERVATIVE ON SPARSE DATA. If LinkedIn content is thin or noisy, score
-   conservatively (3-5) with confidence "low". Do NOT default to a mid score.
-10. WHEN IN DOUBT, ROUND DOWN.
-
-==================================================================================
-CONTEXT
-==================================================================================
-- Founder Name: {founder_name}
-- LinkedIn URL: {linkedin_url}
-- Startup: {startup_name} (Sector: {sector})
-
-LINKEDIN PAGE CONTENT (scraped HTML, cleaned to text):
----BEGIN---
-{linkedin_text}
----END---
-
-The content may include navigation chrome and noise — extract the founder-specific signal only.
-
-==================================================================================
-FOCUS AREAS (in order of weight)
-==================================================================================
-1. PRIOR FOUNDING EXPERIENCE — any prior startup, especially with an exit
-2. Domain expertise relevant to "{sector}" (years working IN this space)
-3. Prior companies: name + role seniority + tenure
-4. Pedigree: schools + degrees
-5. Total years of relevant work experience
-6. Leadership scope (team size managed, scale of responsibility)
-
-==================================================================================
-SCORING RUBRIC (integer 1-10)
-==================================================================================
-  9-10 = Repeat founder with prior EXIT in any sector; OR top-tier pedigree
-         (IIT/IIM/Stanford/MIT/Wharton/Harvard/Oxford) + senior role (5+ yrs)
-         at a leading tech/finance/operating company + deep domain expertise
-         specifically in this startup's sector
-  7-8  = Strong pedigree (top school OR top company) + prior startup experience,
-         OR 5+ yrs senior leadership + clear domain fit
-  5-6  = Decent background, mid-tier school or company, 3-5 yrs relevant work,
-         some domain fit
-  3-4  = Thin credentials, recent graduate, limited relevant experience, weak
-         or no domain fit
-  1-2  = No verifiable background, irrelevant experience, or red flags
-         (scandal, exaggerated or contradicted claims, stale profile)
-
-Calibration anchors:
-  - A serial founder with 2 exits, currently building in their domain: 10
-  - IIT + 6 yrs senior PM at Google + building in B2B SaaS: 8
-  - 4 yrs at a mid-tier consultancy, recent MBA, first-time founder: 5
-  - Final-year college student with one internship: 3
-  - Empty LinkedIn or only navigation noise: 2 with confidence "low"
-
-==================================================================================
-OUTPUT
-==================================================================================
-Return ONLY a raw JSON object, no markdown, all strings single-line. founder_score
-MUST be an integer in [1, 10]. founder_confidence MUST be "low" | "medium" | "high".
-
-{{
-  "founder_score": 7,
-  "founder_education": "School(s) + degree, e.g. 'IIT Bombay B.Tech CS 2015', or 'unknown'",
-  "founder_companies": "Comma list of prior companies + role + years, e.g. 'Google SWE 2017-2020, Stripe PM 2020-2023', or 'unknown'",
-  "prior_founding_experience": "Yes/No + brief detail (e.g. 'Yes: founded XYZ 2018, acquired 2021'), or 'No'",
-  "domain_fit": "How well does the founder's background match the startup's sector ({sector})? 1-2 sentences.",
-  "years_relevant_experience": "Integer or short range, or 'unknown'",
-  "founder_red_flags": "Any concerns from the LinkedIn content, or 'none observed'",
-  "founder_analysis_summary": "3-5 sentences justifying the score, citing ONLY facts from the LinkedIn text. Single line.",
-  "founder_confidence": "low | medium | high"
-}}
-""".strip()
-
-
 def parse_json_response(text: str) -> dict:
     text = text.strip()
     if text.startswith("```"):
@@ -642,29 +470,10 @@ def validate_market_moat_problem(result: dict) -> list[str]:
     return errors
 
 
-def validate_founder(result: dict) -> list[str]:
-    errors: list[str] = []
-    required_strings = [
-        "founder_education", "founder_companies", "prior_founding_experience",
-        "domain_fit", "founder_red_flags", "founder_analysis_summary",
-    ]
-    for f in required_strings:
-        v = result.get(f)
-        if v is None or (isinstance(v, str) and v.strip() == ""):
-            errors.append(f"{f}: missing or empty")
-    result["founder_score"] = _coerce_score(result.get("founder_score"), "founder_score", errors)
-    _check_enum(result.get("founder_confidence"), ALLOWED_CONFIDENCE, "founder_confidence", errors)
-    return errors
-
-
-def _gemini_call(contents, use_search: bool = True, max_retries: int = 5) -> dict:
-    if use_search:
-        config = types.GenerateContentConfig(
-            tools=[types.Tool(google_search=types.GoogleSearch())]
-        )
-    else:
-        config = types.GenerateContentConfig()
-
+def _gemini_call(contents, max_retries: int = 5) -> dict:
+    config = types.GenerateContentConfig(
+        tools=[types.Tool(google_search=types.GoogleSearch())]
+    )
     base_delay = 10
     last_err = None
     for attempt in range(max_retries):
@@ -696,14 +505,7 @@ def evaluate_row(row, deck_bytes=None, deck_mime=None, max_retries: int = 5) -> 
         ]
     else:
         contents = prompt
-    # Market + MOAT uses Google Search for live sector research.
-    return _gemini_call(contents, use_search=True, max_retries=max_retries)
-
-
-def evaluate_founder(row, linkedin_text: str, max_retries: int = 5) -> dict:
-    prompt = build_founder_prompt(row, linkedin_text)
-    # Founder scoring is STRICTLY LinkedIn-only -- no Google Search.
-    return _gemini_call(prompt, use_search=False, max_retries=max_retries)
+    return _gemini_call(contents, max_retries=max_retries)
 
 
 def row_key(row, idx: int) -> str:
@@ -720,7 +522,6 @@ OUTPUT_COLUMNS = [
     "Sector",
     "Stage",
     "Pitch Deck URL",
-    "LinkedIn",
     # market
     "deck_fetch_status",
     "market_size_score",
@@ -753,22 +554,9 @@ OUTPUT_COLUMNS = [
     "pitch_deck_accessed",
     "pitch_deck_notes",
     "web_sources_used",
-    # founder
-    "linkedin_fetch_status",
-    "founder_score",
-    "founder_education",
-    "founder_companies",
-    "prior_founding_experience",
-    "domain_fit",
-    "years_relevant_experience",
-    "founder_red_flags",
-    "founder_confidence",
-    "founder_analysis_summary",
     # diagnostics
-    "validation_warnings_market_moat_problem",
-    "validation_warnings_founder",
-    "market_moat_error",
-    "founder_error",
+    "validation_warnings",
+    "evaluation_error",
 ]
 
 
@@ -810,6 +598,109 @@ def append_result(out_row: dict) -> None:
     )
 
 
+# ---------------------------------------------------------------------------
+# Terminal UX helpers
+# ---------------------------------------------------------------------------
+
+BANNER = r"""
+================================================================================
+
+   ██████╗ ██████╗ ███╗   ██╗ ██████╗ ██╗   ██╗███████╗███████╗████████╗
+  ██╔════╝██╔═══██╗████╗  ██║██╔═══██╗██║   ██║██╔════╝██╔════╝╚══██╔══╝
+  ██║     ██║   ██║██╔██╗ ██║██║   ██║██║   ██║█████╗  ███████╗   ██║
+  ██║     ██║   ██║██║╚██╗██║██║▄▄ ██║██║   ██║██╔══╝  ╚════██║   ██║
+  ╚██████╗╚██████╔╝██║ ╚████║╚██████╔╝╚██████╔╝███████╗███████║   ██║
+   ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝ ╚══▀▀═╝  ╚═════╝ ╚══════╝╚══════╝   ╚═╝
+
+                       A I   E V A L U A T O R
+            Market  ·  MOAT  ·  Problem Validation  ·  Gemini
+
+================================================================================
+"""
+
+
+def fmt_duration(seconds: float) -> str:
+    s = int(max(seconds, 0))
+    h, s = divmod(s, 3600)
+    m, s = divmod(s, 60)
+    return f"{h:d}:{m:02d}:{s:02d}"
+
+
+def truncate(text: str, max_len: int) -> str:
+    if not text:
+        return ""
+    text = str(text).strip()
+    return text if len(text) <= max_len else text[: max_len - 1] + "…"
+
+
+def print_run_header(csv_path: Path, results_path: Path, model: str, limit, start, total_rows: int,
+                     done_count: int) -> None:
+    print(BANNER)
+    print(f"  Input file   : {csv_path.name}  ({total_rows} rows)")
+    print(f"  Output file  : {results_path.name}")
+    print(f"  Model        : {model}")
+    print(f"  Run limit    : {limit if limit is not None else 'none (all rows)'}")
+    if start:
+        print(f"  Start offset : skip first {start} rows")
+    if done_count:
+        print(f"  Resuming     : {done_count} rows already scored, will skip those")
+    print("=" * 80)
+    print()
+
+
+def print_row_header(local_pos: int, local_total, global_idx: int, global_total: int,
+                     elapsed: float, name: str, sector: str, stage: str) -> None:
+    pct = 100.0 * local_pos / local_total if local_total else 0.0
+    progress_bar = _bar(local_pos, local_total, width=24) if local_total else ""
+    print()
+    print("─" * 80)
+    if local_total:
+        print(f"  [{local_pos}/{local_total}]  {progress_bar}  {pct:5.1f}%   "
+              f"row {global_idx} of {global_total}   elapsed {fmt_duration(elapsed)}")
+    else:
+        print(f"  [{local_pos}]  row {global_idx} of {global_total}   "
+              f"elapsed {fmt_duration(elapsed)}")
+    print("─" * 80)
+    print(f"  Startup : {truncate(name, 70)}")
+    print(f"  Sector  : {truncate(sector, 40)}   |   Stage: {truncate(stage, 20)}")
+
+
+def _bar(done: int, total: int, width: int = 24) -> str:
+    if not total:
+        return ""
+    filled = int(width * done / total)
+    return "[" + "█" * filled + "░" * (width - filled) + "]"
+
+
+def print_eta(local_pos: int, local_total, elapsed: float) -> None:
+    if not local_total or local_pos < 1:
+        return
+    avg = elapsed / local_pos
+    remaining = avg * (local_total - local_pos)
+    print(f"  ETA     : ~{fmt_duration(remaining)} remaining   "
+          f"({avg:.1f}s/row average)")
+
+
+def print_run_summary(*, processed: int, skipped_empty: int, errors: int,
+                      rows_with_warnings: int, fetchable: int, downloaded: int,
+                      deck_accessed: int, elapsed: float, results_path: Path) -> None:
+    print()
+    print("=" * 80)
+    print("  R U N   C O M P L E T E")
+    print("=" * 80)
+    print(f"  Startups processed        : {processed}")
+    print(f"  Empty rows skipped        : {skipped_empty}")
+    print(f"  Validation warnings (rows): {rows_with_warnings}")
+    print(f"  Evaluation errors         : {errors}")
+    print(f"  Decks fetchable           : {fetchable}")
+    print(f"  Decks downloaded          : {downloaded}"
+          + (f"  ({100.0 * downloaded / fetchable:.0f}% success)" if fetchable else ""))
+    print(f"  Decks read by Gemini      : {deck_accessed}")
+    print(f"  Total elapsed             : {fmt_duration(elapsed)}")
+    print(f"  Output saved to           : {results_path.name}")
+    print("=" * 80)
+
+
 def main():
     global RESULTS_PATH
 
@@ -839,84 +730,95 @@ def main():
         sys.exit("Set GEMINI_API_KEY (or GOOGLE_API_KEY) in your environment before running.")
 
     df = pd.read_csv(csv_path, dtype={"Tracking ID": str})
-    print(f"Loaded {len(df)} rows from {csv_path.name}")
-    print(f"Output will be written to {RESULTS_PATH.name}")
 
     done_ids = load_done_ids()
-    if done_ids:
-        print(f"Resuming: {len(done_ids)} rows already scored; will skip those.")
 
     work = df.iloc[args.start:]
     if args.only_with_deck:
         work = work[work["Pitch Deck URL"].notna()]
-        print(f"--only-with-deck active: {len(work)} candidate rows have a pitch deck URL.")
 
-    processed = 0
-    skipped_empty = 0
-    fetchable = 0
-    downloaded = 0
-    deck_accessed = 0
-    market_errors = 0
-    linkedin_present = 0
-    linkedin_fetched = 0
-    founder_scored = 0
-    founder_errors = 0
-    rows_with_warnings = 0
+    print_run_header(csv_path, RESULTS_PATH, MODEL,
+                     limit=args.limit, start=args.start,
+                     total_rows=len(df), done_count=len(done_ids))
+    if args.only_with_deck:
+        print(f"  --only-with-deck active: {len(work)} candidate rows have a pitch deck URL.")
+        print()
 
+    # Pre-compute how many rows will actually be processed this run (for progress %)
+    candidates = []
     for idx, row in work.iterrows():
         name = safe(row.get("Startup Name"))
-        # Skip rows with no Startup Name (e.g., abandoned/empty registrations).
         if name == "N/A":
-            skipped_empty += 1
             continue
-
-        # Stable per-row key. Synthetic when Tracking ID is missing so rows with
-        # blank tids don't all collapse to the same dedup bucket.
         tid = row_key(row, idx)
         if tid in done_ids:
             continue
-        if args.limit is not None and processed >= args.limit:
+        candidates.append((idx, row, tid, name))
+    local_total = min(len(candidates), args.limit) if args.limit is not None else len(candidates)
+
+    if local_total == 0:
+        print("  Nothing to do — all eligible rows are already in the output file.")
+        return
+
+    processed = 0
+    skipped_empty = sum(1 for _, r in work.iterrows() if safe(r.get("Startup Name")) == "N/A")
+    fetchable = 0
+    downloaded = 0
+    deck_accessed = 0
+    errors = 0
+    rows_with_warnings = 0
+    run_start = time.time()
+
+    for (idx, row, tid, name) in candidates:
+        if processed >= local_total:
             break
 
+        elapsed = time.time() - run_start
         deck_url = safe(row.get("Pitch Deck URL"))
-        linkedin_url_raw = safe(row.get("LinkedIn"))
-        print(f"\n[{idx + 1}/{len(df)}] {name}")
+        sector = safe(row.get("Sector"))
+        stage = safe(row.get("Stage"))
+
+        print_row_header(processed + 1, local_total, idx + 1, len(df),
+                         elapsed, name, sector, stage)
 
         out = {col: None for col in OUTPUT_COLUMNS}
         out.update({
             "Tracking ID": tid,
             "Startup Name": name,
-            "Sector": safe(row.get("Sector")),
-            "Stage": safe(row.get("Stage")),
+            "Sector": sector,
+            "Stage": stage,
             "Pitch Deck URL": deck_url,
-            "LinkedIn": linkedin_url_raw,
         })
 
         # ---------- Pitch deck download ----------
         deck_bytes = deck_mime = None
         if is_fetchable_deck(deck_url):
             fetchable += 1
-            print(f"    fetching deck: {deck_url}")
             deck_bytes, deck_mime, status = download_deck(deck_url)
             out["deck_fetch_status"] = status
-            print(f"    {status}")
             if deck_bytes is not None:
                 downloaded += 1
+                size_kb = len(deck_bytes) / 1024
+                print(f"  → Deck    : downloaded {size_kb:,.0f} KB")
+            else:
+                print(f"  → Deck    : {status}")
         elif deck_url == "N/A":
             out["deck_fetch_status"] = "no url"
+            print(f"  → Deck    : no URL provided")
         else:
             out["deck_fetch_status"] = "skipped (unsupported host)"
+            print(f"  → Deck    : skipped (unsupported host)")
 
-        # ---------- Market + MOAT + Problem Validation (single combined call) ----------
+        # ---------- Market + MOAT + Problem (single grounded call) ----------
+        print(f"  → Gemini  : calling (market + MOAT + problem)...")
         try:
             result = evaluate_row(row, deck_bytes=deck_bytes, deck_mime=deck_mime)
             warnings = validate_market_moat_problem(result)
             if warnings:
-                out["validation_warnings_market_moat_problem"] = " | ".join(warnings)
-                print(f"    ⚠ validation: {len(warnings)} warning(s): {warnings[0]}"
-                      + (f"  (+{len(warnings)-1} more)" if len(warnings) > 1 else ""))
+                rows_with_warnings += 1
+                out["validation_warnings"] = " | ".join(warnings)
+
             out.update({
-                # market
                 "market_size_score": result.get("market_size_score"),
                 "calculated_tam": result.get("calculated_tam"),
                 "deck_tam_claim": result.get("deck_tam_claim"),
@@ -926,7 +828,6 @@ def main():
                 "growth_headwinds": result.get("growth_headwinds"),
                 "market_confidence": result.get("market_confidence"),
                 "market_analysis_summary": result.get("market_analysis_summary"),
-                # moat
                 "moat_score": result.get("moat_score"),
                 "moat_types_present": result.get("moat_types_present"),
                 "deck_moat_claim": result.get("deck_moat_claim"),
@@ -934,7 +835,6 @@ def main():
                 "moat_risks": result.get("moat_risks"),
                 "moat_confidence": result.get("moat_confidence"),
                 "moat_analysis_summary": result.get("moat_analysis_summary"),
-                # problem validation
                 "problem_score": result.get("problem_score"),
                 "problem_severity": result.get("problem_severity"),
                 "problem_frequency": result.get("problem_frequency"),
@@ -943,89 +843,49 @@ def main():
                 "problem_red_flags": result.get("problem_red_flags"),
                 "problem_confidence": result.get("problem_confidence"),
                 "problem_analysis_summary": result.get("problem_analysis_summary"),
-                # shared
                 "pitch_deck_accessed": result.get("pitch_deck_accessed"),
                 "pitch_deck_notes": result.get("pitch_deck_notes"),
                 "web_sources_used": result.get("web_sources_used"),
             })
-            print(f"    market={out['market_size_score']}  moat={out['moat_score']}  "
-                  f"problem={out['problem_score']}  deck_read={out['pitch_deck_accessed']}")
             if bool(out["pitch_deck_accessed"]):
                 deck_accessed += 1
+
+            tam_brief = truncate(str(out["calculated_tam"]), 60)
+            moats_brief = truncate(str(out["moat_types_present"]), 50)
+            problem_brief = f"{out['problem_severity']} / {out['problem_frequency']}"
+            print(f"  ✓ Market  : {out['market_size_score']}/10  "
+                  f"({out['market_confidence']:<6})   TAM: {tam_brief}")
+            print(f"  ✓ MOAT    : {out['moat_score']}/10  "
+                  f"({out['moat_confidence']:<6})   {moats_brief}")
+            print(f"  ✓ Problem : {out['problem_score']}/10  "
+                  f"({out['problem_confidence']:<6})   {problem_brief}")
+
+            if warnings:
+                print(f"  ⚠ Warnings: {len(warnings)} — {truncate(warnings[0], 60)}"
+                      + (f"  (+{len(warnings)-1} more)" if len(warnings) > 1 else ""))
         except Exception as e:
-            market_errors += 1
-            out["market_moat_error"] = str(e)
-            print(f"    MARKET/MOAT/PROBLEM ERROR: {e}")
-
-        # ---------- Founder (LinkedIn-only; NA when LinkedIn unavailable) ----------
-        # Strict rule: founder score comes from LinkedIn content only. If we can't
-        # get LinkedIn (no URL, blocked, login wall, etc.), founder fields stay NA.
-        # No Google Search fallback -- it's unreliable for founder data.
-        linkedin_url = normalize_linkedin_url(linkedin_url_raw)
-        if linkedin_url is None:
-            out["linkedin_fetch_status"] = "no linkedin url -> founder NA"
-            print(f"    no LinkedIn URL -> founder NA")
-        else:
-            linkedin_present += 1
-            print(f"    fetching LinkedIn: {linkedin_url}")
-            linkedin_text, linkedin_status = fetch_linkedin_text(linkedin_url)
-            out["linkedin_fetch_status"] = linkedin_status
-            print(f"    linkedin: {linkedin_status}")
-            if linkedin_text is None:
-                print(f"    LinkedIn unreadable -> founder NA")
-            else:
-                linkedin_fetched += 1
-                try:
-                    f_result = evaluate_founder(row, linkedin_text)
-                    f_warnings = validate_founder(f_result)
-                    if f_warnings:
-                        out["validation_warnings_founder"] = " | ".join(f_warnings)
-                        print(f"    ⚠ founder validation: {len(f_warnings)} warning(s): {f_warnings[0]}"
-                              + (f"  (+{len(f_warnings)-1} more)" if len(f_warnings) > 1 else ""))
-                    out.update({
-                        "founder_score": f_result.get("founder_score"),
-                        "founder_education": f_result.get("founder_education"),
-                        "founder_companies": f_result.get("founder_companies"),
-                        "prior_founding_experience": f_result.get("prior_founding_experience"),
-                        "domain_fit": f_result.get("domain_fit"),
-                        "years_relevant_experience": f_result.get("years_relevant_experience"),
-                        "founder_red_flags": f_result.get("founder_red_flags"),
-                        "founder_confidence": f_result.get("founder_confidence"),
-                        "founder_analysis_summary": f_result.get("founder_analysis_summary"),
-                    })
-                    founder_scored += 1
-                    print(f"    founder={out['founder_score']}  edu={out['founder_education']}  "
-                          f"prior_founding={out['prior_founding_experience']}  conf={out['founder_confidence']}")
-                except Exception as e:
-                    founder_errors += 1
-                    out["founder_error"] = str(e)
-                    print(f"    FOUNDER ERROR: {e}")
-
-        if out.get("validation_warnings_market_moat_problem") or out.get("validation_warnings_founder"):
-            rows_with_warnings += 1
+            errors += 1
+            out["evaluation_error"] = str(e)
+            print(f"  ✗ ERROR   : {truncate(str(e), 70)}")
 
         append_result(out)
         done_ids.add(tid)
         processed += 1
+        print(f"  ✓ Saved   : appended to {RESULTS_PATH.name}")
+        print_eta(processed, local_total, time.time() - run_start)
         time.sleep(API_PAUSE_SECONDS)
 
-    print("\n=== Run summary ===")
-    print(f"Processed this run:                {processed}")
-    print(f"Empty rows skipped (no name):      {skipped_empty}")
-    print(f"Rows with validation warnings:     {rows_with_warnings}")
-    print(f"Market/MOAT/Problem errors:        {market_errors}")
-    print(f"Founder errors:                    {founder_errors}")
-    print(f"Decks fetchable (conquest):        {fetchable}")
-    print(f"Decks successfully downloaded:     {downloaded}")
-    print(f"Decks model confirmed read:        {deck_accessed}")
-    print(f"Rows with LinkedIn URL:            {linkedin_present}")
-    print(f"LinkedIn pages with usable text:   {linkedin_fetched}")
-    print(f"Founders scored:                   {founder_scored}")
-    if fetchable:
-        print(f"Deck download success rate:        {100.0 * downloaded / fetchable:.1f}%")
-    if linkedin_present:
-        print(f"LinkedIn fetch success rate:       {100.0 * linkedin_fetched / linkedin_present:.1f}%")
-    print(f"Results file:                      {RESULTS_PATH}")
+    print_run_summary(
+        processed=processed,
+        skipped_empty=skipped_empty,
+        errors=errors,
+        rows_with_warnings=rows_with_warnings,
+        fetchable=fetchable,
+        downloaded=downloaded,
+        deck_accessed=deck_accessed,
+        elapsed=time.time() - run_start,
+        results_path=RESULTS_PATH,
+    )
 
 
 if __name__ == "__main__":

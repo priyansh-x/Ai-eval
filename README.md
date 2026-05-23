@@ -1,19 +1,28 @@
-# AI Startup Evaluator
+# Conquest AI Evaluator
 
-A Python script that uses the **Gemini API** to evaluate startups along four dimensions:
+```
+   ██████╗ ██████╗ ███╗   ██╗ ██████╗ ██╗   ██╗███████╗███████╗████████╗
+  ██╔════╝██╔═══██╗████╗  ██║██╔═══██╗██║   ██║██╔════╝██╔════╝╚══██╔══╝
+  ██║     ██║   ██║██╔██╗ ██║██║   ██║██║   ██║█████╗  ███████╗   ██║
+  ██║     ██║   ██║██║╚██╗██║██║▄▄ ██║██║   ██║██╔══╝  ╚════██║   ██║
+  ╚██████╗╚██████╔╝██║ ╚████║╚██████╔╝╚██████╔╝███████╗███████║   ██║
+   ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝ ╚══▀▀═╝  ╚═════╝ ╚══════╝╚══════╝   ╚═╝
+                       A I   E V A L U A T O R
+```
+
+A Python script that uses the **Gemini API** to evaluate startups along three dimensions:
 
 | Score | What it measures | Inputs used |
 |---|---|---|
 | **Market Size** (1–10) | Realistic SAM, growth/CAGR, tailwinds, headwinds, geographic reach, timing | Founder text + pitch deck PDF (if available) + live Google Search |
 | **Differentiation / MOAT** (1–10) | Tech/IP, data, network effects, brand, switching costs, regulatory, distribution, scale advantages | Same as above; cross-checks deck claims against independent research |
 | **Problem Validation** (1–10) | Severity, frequency, prevalence, existing willingness-to-pay, articulation quality, demand evidence | Same as above |
-| **Founder Profile** (1–10) | Pedigree, prior companies, founding experience, domain fit, years of relevant experience | **LinkedIn profile content only** (no web search). Returns NA if LinkedIn cannot be fetched. |
 
-Market + MOAT + Problem Validation are produced by **one** Gemini call per startup (with Google Search grounding). Founder is a **separate** call (no grounding) when LinkedIn content is available. Results are appended to a CSV one row at a time, so the script is **crash-safe and resumable**.
+All three scores are produced by **one** Gemini call per startup (with Google Search grounding) — the deck is downloaded once and read multimodally. Results are appended to a CSV one row at a time, so the script is **crash-safe and resumable**.
 
 ### Anti-bias & quality controls
 
-The prompts include explicit guardrails: sector-neutral, geography-neutral, founder-identity-neutral for the business scores, no halo effect across dimensions, buzzwords-without-evidence count as zero, evidence-only for founder scoring, and conservative defaults when data is thin. Every Gemini response is run through a **validator** that checks score type/range, required fields, confidence-enum values, evidence-substance for high scores, and a halo-effect heuristic. Any violations are written to `validation_warnings_*` columns in the CSV for auditing — they never block writing the row.
+The prompts include explicit guardrails: sector-neutral, geography-neutral, founder-identity-neutral, no halo effect across dimensions, buzzwords-without-evidence count as zero, and conservative defaults when data is thin. Every Gemini response is run through a **validator** that checks score type/range, required fields, confidence-enum values, evidence-substance for high scores, and a halo-effect heuristic. Any violations are written to a `validation_warnings` column in the CSV for auditing — they never block writing the row.
 
 ---
 
@@ -82,13 +91,14 @@ python3 evaluate_market.py --limit 15
 ```
 
 This will:
+- Print a `CONQUEST AI EVALUATOR` banner and the run config (input file, output file, model, limits)
 - Read the input CSV
 - For each of the first 15 startups (skipping rows already evaluated in a prior run, and skipping empty rows):
   1. Download the pitch deck PDF if it's hosted on `conquestbits.org` (in-memory; not saved to disk)
-  2. Call Gemini once with the deck + founder text + Google Search grounding → returns **Market** + **MOAT** scores
-  3. If a LinkedIn URL is present, fetch it via `requests` → if usable content comes back, call Gemini again (no web search) → returns **Founder** score. Otherwise founder fields stay NA.
-- Append each result as a row in `evaluate_market_results.csv`
-- Print a per-startup log line and a final run summary
+  2. Call Gemini once with the deck + founder text + Google Search grounding → returns **Market + MOAT + Problem Validation** scores in one JSON
+  3. Validate the response (scores in range, evidence present for high scores, halo-effect heuristic) and append to `Conquest-Output.csv`
+- Show a per-startup progress block with a progress bar, scores, and an ETA estimate
+- Print a clean run summary at the end
 
 ### 3.2 Other useful flags
 
@@ -131,7 +141,7 @@ rm Conquest-Output.csv
 The script writes `Conquest-Output.csv` (or whatever you pass to `--output`) with these columns:
 
 **Identifiers**
-- `Tracking ID`, `Startup Name`, `Sector`, `Stage`, `Pitch Deck URL`, `LinkedIn`
+- `Tracking ID`, `Startup Name`, `Sector`, `Stage`, `Pitch Deck URL`
 
 **Market**
 - `market_size_score` (1–10)
@@ -158,18 +168,11 @@ The script writes `Conquest-Output.csv` (or whatever you pass to `--output`) wit
 - `problem_red_flags` — e.g. *"solution looking for a problem"*
 - `problem_confidence`, `problem_analysis_summary`
 
-**Founder**
-- `linkedin_fetch_status` — `fetched`, `login wall`, `HTTP 999`, `no linkedin url -> founder NA`, etc.
-- `founder_score` (1–10, or blank if LinkedIn unreadable)
-- `founder_education`, `founder_companies`, `prior_founding_experience`, `domain_fit`, `years_relevant_experience`, `founder_red_flags`
-- `founder_confidence`, `founder_analysis_summary`
-
 **Diagnostics**
 - `deck_fetch_status` — `downloaded N bytes`, `skipped (unsupported host)`, `no url`, etc.
 - `pitch_deck_accessed`, `pitch_deck_notes`, `web_sources_used`
-- `validation_warnings_market_moat_problem` — pipe-separated list of any schema/quality issues with the combined call's output
-- `validation_warnings_founder` — same, for the founder call
-- `market_moat_error`, `founder_error` — populated only if a call failed after all retries
+- `validation_warnings` — pipe-separated list of any schema/quality issues with the model's output
+- `evaluation_error` — populated only if a call failed after all retries
 
 ---
 
@@ -210,24 +213,14 @@ Assesses how REAL, URGENT, and VALIDATED the problem is — orthogonal to market
 
 Calibration anchors in the prompt: *"Most adults in Kenya can't access financial services" (M-Pesa) = 10; "Teams struggle with project tasks" (Asana, crowded) = 5; "I want a workout-feed app" = 3.*
 
-### Founder
-LinkedIn-only. Rubric:
-- **9–10** = Repeat founder with prior exit, OR top-tier pedigree (IIT/IIM/Stanford/MIT/Wharton/Harvard) + senior role at a top tech co + domain expertise
-- **7–8** = Strong pedigree (top school OR top company) + prior startup experience OR 5+ yrs leadership + clear domain fit
-- **5–6** = Mid-tier school/company, 3–5 yrs relevant work
-- **3–4** = Thin credentials, recent grad, weak domain fit
-- **1–2** = No verifiable background or red flags
-
-If LinkedIn returns a login wall, HTTP 999, or empty body, the founder score is left blank (NA). The script never falls back to Google Search for founder data — it would too easily attribute the wrong person.
-
-### Anti-bias guardrails (applied across all four scores)
+### Anti-bias guardrails (applied across all three scores)
 
 The prompts include explicit instructions to avoid common evaluation biases:
 
-1. **Independence** — score each axis separately; don't let one inflate another (halo effect is auto-flagged as a validation warning if all three business scores are identical)
+1. **Independence** — score each axis separately; don't let one inflate another (halo effect is auto-flagged as a validation warning if all three scores are identical)
 2. **Sector-neutral** — hype sectors (AI, Web3) get no bonus; boring sectors (logistics, agri, MSME) get no penalty
 3. **Geography-neutral** — India-only startups are scored on their actual SAM, not penalized for not being global
-4. **Founder-identity-neutral** for the business scores — gender, ethnicity, school don't factor into Market/MOAT/Problem
+4. **Founder-identity-neutral** — gender, ethnicity, school don't factor into the scores
 5. **Aesthetics-neutral** — beautiful deck for a weak business is still a weak business
 6. **Buzzwords = zero** — "AI-powered", "blockchain", "revolutionary" count for nothing without specific technical evidence
 7. **Founder-claim skepticism** — all founder claims are hypotheses to verify, not facts
@@ -235,11 +228,9 @@ The prompts include explicit instructions to avoid common evaluation biases:
 9. **No hallucination** — say "unable to verify" rather than invent
 10. **When in doubt, round down** — pick the lower of two adjacent scores and explain the upside case
 
-For founder scoring specifically: no name/gender/ethnicity inference, school-brand-neutral, recent-graduate cap of 5, evidence-only (no inference of unstated facts).
-
 ### Output validation
 
-Every Gemini response is checked before being written to CSV. Warnings (not errors) are surfaced in `validation_warnings_market_moat_problem` and `validation_warnings_founder` columns. The checks include:
+Every Gemini response is checked before being written to CSV. Warnings (not errors) are surfaced in the `validation_warnings` column. The checks include:
 
 - All required fields present and non-empty
 - All scores are integers in [1, 10] (string scores like `"8"` are auto-coerced)
@@ -247,7 +238,7 @@ Every Gemini response is checked before being written to CSV. Warnings (not erro
 - Problem severity / frequency match the allowed enum
 - `moat_evidence` is ≥ 50 chars when `moat_score` ≥ 7 (anti-laziness)
 - `demand_evidence` is ≥ 30 chars when `problem_score` ≥ 7 (anti-laziness)
-- Halo-effect heuristic: all three business scores identical = flagged for review
+- Halo-effect heuristic: all three scores identical = flagged for review
 
 Validation never blocks writing — the row is always persisted so you can audit suspect rows yourself.
 
@@ -277,8 +268,7 @@ Any column that's missing is rendered as `"N/A"` in the prompt — the script wi
 
 | Issue | Detail |
 |---|---|
-| **LinkedIn 999 errors** | LinkedIn aggressively blocks unauthenticated bot traffic. Expect 0–25% LinkedIn fetch success rate. For rows that fail, founder fields are NA — no Google Search fallback by design. |
-| **Pitch deck hosts** | Only `conquestbits.org` URLs are downloaded. OneDrive (`1drv.ms`) and Google Drive share links are skipped (auth-gated). |
+| **Pitch deck hosts** | Only `conquestbits.org` URLs are downloaded. OneDrive (`1drv.ms`), Google Drive share links, `gamma.app`, etc. are skipped (auth-gated or unsupported). For those rows the score is built from text + Google Search only. |
 | **Free tier daily quota** | ~20 grounded requests/day on Gemini 2.5 Flash. Enable billing to process the full dataset. |
 | **503 / 429 errors** | The script retries up to 5 times with exponential backoff. 503s are usually transient; 429s mean you've hit your daily quota. |
 | **Schema changes** | If the script's `OUTPUT_COLUMNS` ever change, delete `Conquest-Output.csv` before re-running to avoid header drift. |
@@ -287,11 +277,11 @@ Any column that's missing is rendered as `"N/A"` in the prompt — the script wi
 
 ## 8. Cost estimate (paid tier)
 
-For the full 669-row dataset on **Gemini 2.5 Flash** (paid Tier 1):
-- ~669 grounded calls (market + MOAT) + ~30–150 ungrounded calls (founder, depending on LinkedIn success rate)
+For the full 619-row dataset on **Gemini 2.5 Flash** (paid Tier 1):
+- ~619 grounded calls total (one per startup — market + MOAT + problem all in one call)
 - Model tokens: well under **$1**
 - Google Search grounding: first 1,500 grounded calls free per day, then ~$35/1k
-- **Total: < $10**
+- **Total: ~$1–3** (well under daily grounding-free allowance)
 
 ---
 
