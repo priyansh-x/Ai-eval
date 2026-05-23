@@ -14,8 +14,9 @@ from google.genai import types
 from google.genai.errors import APIError
 
 SCRIPT_DIR = Path(__file__).parent
-CSV_PATH = SCRIPT_DIR / "conquest-registrations-2026-04-25 (2).csv"
-RESULTS_PATH = SCRIPT_DIR / "evaluate_market_results.csv"
+# Default input/output. Both overridable via --csv and --output CLI flags.
+CSV_PATH = SCRIPT_DIR / "Conquest-Input.csv"
+RESULTS_PATH = SCRIPT_DIR / "Conquest-Output.csv"
 
 MODEL = "gemini-2.5-flash"
 API_PAUSE_SECONDS = 1.0
@@ -158,8 +159,17 @@ FOUNDER-DECLARED FIELDS (treat as claims to verify, not facts)
 - Has Patents (claimed): {safe(row.get('Has Patents'))}
 - Patent Details (claimed): {safe(row.get('Patent Details'))}
 - Has Revenue: {safe(row.get('Has Revenue'))}
-- MRR (claimed): {safe(row.get('MRR'))}
+- MRR (claimed, INR/month): {safe(row.get('MRR'))}
+- Monthly Burn (INR/month): {safe(row.get('Monthly Burn'))}
 - Funding Status: {safe(row.get('Funding Status'))}
+- Funding From: {safe(row.get('Funding From'))}
+- Grant Details: {safe(row.get('Grant Details'))}
+- Demo Video Provided: {"yes" if safe(row.get('Demo Video Link')) != "N/A" else "no"}
+
+FOUNDER-DECLARED CHALLENGES (top 3 areas the founder is worried about — useful for problem articulation and self-awareness)
+- Challenge 1: {safe(row.get('Challenge 1'))} | detail: {safe(row.get('Challenge 1 Details'))}
+- Challenge 2: {safe(row.get('Challenge 2'))} | detail: {safe(row.get('Challenge 2 Details'))}
+- Challenge 3: {safe(row.get('Challenge 3'))} | detail: {safe(row.get('Challenge 3 Details'))}
 
 PITCH DECK HANDLING
 {deck_instruction}
@@ -801,7 +811,16 @@ def append_result(out_row: dict) -> None:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Score market size for each startup using Gemini.")
+    global RESULTS_PATH
+
+    parser = argparse.ArgumentParser(
+        description="Score startups on Market / MOAT / Problem Validation / Founder using Gemini."
+    )
+    parser.add_argument("--csv", type=str, default=str(CSV_PATH),
+                        help=f"Path to input CSV (default: {CSV_PATH.name}).")
+    parser.add_argument("--output", type=str, default=str(RESULTS_PATH),
+                        help=f"Path to output CSV (default: {RESULTS_PATH.name}). "
+                             "Appended to incrementally; resumable on re-run.")
     parser.add_argument("--limit", type=int, default=None,
                         help="Process at most this many NEW rows in this run.")
     parser.add_argument("--only-with-deck", action="store_true",
@@ -810,13 +829,18 @@ def main():
                         help="Skip the first N rows of the source CSV before processing.")
     args = parser.parse_args()
 
-    if not CSV_PATH.exists():
-        sys.exit(f"CSV not found: {CSV_PATH}")
+    # Apply CLI overrides for input/output paths
+    csv_path = Path(args.csv).expanduser().resolve()
+    RESULTS_PATH = Path(args.output).expanduser().resolve()
+
+    if not csv_path.exists():
+        sys.exit(f"CSV not found: {csv_path}")
     if not os.environ.get("GEMINI_API_KEY") and not os.environ.get("GOOGLE_API_KEY"):
         sys.exit("Set GEMINI_API_KEY (or GOOGLE_API_KEY) in your environment before running.")
 
-    df = pd.read_csv(CSV_PATH, dtype={"Tracking ID": str})
-    print(f"Loaded {len(df)} rows from {CSV_PATH.name}")
+    df = pd.read_csv(csv_path, dtype={"Tracking ID": str})
+    print(f"Loaded {len(df)} rows from {csv_path.name}")
+    print(f"Output will be written to {RESULTS_PATH.name}")
 
     done_ids = load_done_ids()
     if done_ids:

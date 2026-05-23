@@ -60,15 +60,14 @@ echo $GEMINI_API_KEY
 
 ### 2.4 Place your input CSV
 
-Drop your registration CSV into the project root. The script looks for the filename hardcoded at the top of `evaluate_market.py`:
+Drop your registration CSV into the project root. The script defaults to:
 
-```python
-CSV_PATH = SCRIPT_DIR / "conquest-registrations-2026-04-25 (2).csv"
-```
+- **Input:**  `Conquest-Input.csv`
+- **Output:** `Conquest-Output.csv`
 
-If your file is named differently, update that line.
+If your file is named differently, either rename it to `Conquest-Input.csv` or use the `--csv` flag (see [§3.2](#32-other-useful-flags)).
 
-> **Privacy note:** the CSV is `.gitignore`d on purpose — it contains founder names, emails, and phone numbers. Never commit it to a public repo.
+> **Privacy note:** all `*.csv` files are `.gitignore`d on purpose — they contain founder names, emails, and phone numbers. Never commit them to a public repo.
 
 ---
 
@@ -100,9 +99,20 @@ python3 evaluate_market.py --start 100 --limit 15
 # Only evaluate rows that have a Pitch Deck URL (saves API calls)
 python3 evaluate_market.py --only-with-deck --limit 15
 
+# Point at a different input or output file
+python3 evaluate_market.py --csv ~/Downloads/my-batch.csv --output my-results.csv --limit 15
+
 # Full run (only do this on the paid tier — will hit free-tier quota almost immediately)
 python3 evaluate_market.py
 ```
+
+| Flag | Default | What it does |
+|---|---|---|
+| `--csv` | `Conquest-Input.csv` | Input CSV path |
+| `--output` | `Conquest-Output.csv` | Output CSV path |
+| `--limit N` | (none) | Process at most N new rows in this run |
+| `--start N` | `0` | Skip the first N rows of the source CSV |
+| `--only-with-deck` | off | Skip rows with no Pitch Deck URL |
 
 ### 3.3 Resuming
 
@@ -111,14 +121,14 @@ The script remembers which rows it has already scored (by Tracking ID, or by row
 To start fresh, delete the results file:
 
 ```bash
-rm evaluate_market_results.csv
+rm Conquest-Output.csv
 ```
 
 ---
 
 ## 4. Output
 
-The script writes `evaluate_market_results.csv` with these columns:
+The script writes `Conquest-Output.csv` (or whatever you pass to `--output`) with these columns:
 
 **Identifiers**
 - `Tracking ID`, `Startup Name`, `Sector`, `Stage`, `Pitch Deck URL`, `LinkedIn`
@@ -245,11 +255,21 @@ Validation never blocks writing — the row is always persisted so you can audit
 
 ## 6. Input CSV format
 
-The script expects these columns (extra columns are ignored):
+The script expects the standard Conquest registration export. Columns used in the prompts:
 
-`Tracking ID`, `Full Name`, `LinkedIn`, `Startup Name`, `Sector`, `Team Size`, `Location`, `Stage`, `Business Model`, `Startup Age`, `Achievements`, `Past Accelerators`, `Problem Solving`, `Solution`, `Target Customer`, `USPs`, `Pitch Deck URL`, `Has Patents`, `Patent Details`
+**Identifiers & founder:** `Tracking ID`, `Full Name`, `LinkedIn`, `Startup Name`
 
-Most fields may be blank — the script renders missing values as `"N/A"` in the prompt.
+**Business profile:** `Sector`, `Team Size`, `Location`, `Stage`, `Business Model`, `Startup Age`
+
+**Founder-declared text:** `Problem Solving`, `Solution`, `Target Customer`, `USPs`, `Achievements`, `Past Accelerators`
+
+**Defensibility signals:** `Has Patents`, `Patent Details`, `Pitch Deck URL`, `Demo Video Link`
+
+**Traction & capital signals:** `Has Revenue`, `MRR`, `Monthly Burn`, `Funding Status`, `Funding From`, `Grant Details`
+
+**Self-awareness signals:** `Challenge 1` / `Challenge 1 Details`, `Challenge 2` / `Challenge 2 Details`, `Challenge 3` / `Challenge 3 Details`
+
+Any column that's missing is rendered as `"N/A"` in the prompt — the script will not crash. Extra columns are ignored.
 
 ---
 
@@ -261,7 +281,7 @@ Most fields may be blank — the script renders missing values as `"N/A"` in the
 | **Pitch deck hosts** | Only `conquestbits.org` URLs are downloaded. OneDrive (`1drv.ms`) and Google Drive share links are skipped (auth-gated). |
 | **Free tier daily quota** | ~20 grounded requests/day on Gemini 2.5 Flash. Enable billing to process the full dataset. |
 | **503 / 429 errors** | The script retries up to 5 times with exponential backoff. 503s are usually transient; 429s mean you've hit your daily quota. |
-| **Schema changes** | If the script's `OUTPUT_COLUMNS` ever change, delete `evaluate_market_results.csv` before re-running to avoid header drift. |
+| **Schema changes** | If the script's `OUTPUT_COLUMNS` ever change, delete `Conquest-Output.csv` before re-running to avoid header drift. |
 
 ---
 
@@ -282,8 +302,8 @@ For the full 669-row dataset on **Gemini 2.5 Flash** (paid Tier 1):
 ├── README.md
 ├── requirements.txt
 ├── .gitignore
-├── evaluate_market.py            # the script
-└── conquest-registrations-...csv # YOUR input (gitignored)
+├── evaluate_market.py     # the script
+└── Conquest-Input.csv     # YOUR input (gitignored)
 ```
 
-`evaluate_market_results.csv` is created when you run the script (also gitignored).
+`Conquest-Output.csv` is created when you run the script (also gitignored).
