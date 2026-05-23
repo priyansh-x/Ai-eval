@@ -1,14 +1,19 @@
 # AI Startup Evaluator
 
-A Python script that uses the **Gemini API** to evaluate startups along three dimensions:
+A Python script that uses the **Gemini API** to evaluate startups along four dimensions:
 
 | Score | What it measures | Inputs used |
 |---|---|---|
-| **Market Size** (1–10) | Realistic TAM, growth, tailwinds/headwinds, geographic reach, timing | Founder text fields + pitch deck PDF (if available) + live Google Search |
+| **Market Size** (1–10) | Realistic SAM, growth/CAGR, tailwinds, headwinds, geographic reach, timing | Founder text + pitch deck PDF (if available) + live Google Search |
 | **Differentiation / MOAT** (1–10) | Tech/IP, data, network effects, brand, switching costs, regulatory, distribution, scale advantages | Same as above; cross-checks deck claims against independent research |
+| **Problem Validation** (1–10) | Severity, frequency, prevalence, existing willingness-to-pay, articulation quality, demand evidence | Same as above |
 | **Founder Profile** (1–10) | Pedigree, prior companies, founding experience, domain fit, years of relevant experience | **LinkedIn profile content only** (no web search). Returns NA if LinkedIn cannot be fetched. |
 
-Results are appended to a CSV one row at a time, so the script is **crash-safe and resumable**.
+Market + MOAT + Problem Validation are produced by **one** Gemini call per startup (with Google Search grounding). Founder is a **separate** call (no grounding) when LinkedIn content is available. Results are appended to a CSV one row at a time, so the script is **crash-safe and resumable**.
+
+### Anti-bias & quality controls
+
+The prompts include explicit guardrails: sector-neutral, geography-neutral, founder-identity-neutral for the business scores, no halo effect across dimensions, buzzwords-without-evidence count as zero, evidence-only for founder scoring, and conservative defaults when data is thin. Every Gemini response is run through a **validator** that checks score type/range, required fields, confidence-enum values, evidence-substance for high scores, and a halo-effect heuristic. Any violations are written to `validation_warnings_*` columns in the CSV for auditing — they never block writing the row.
 
 ---
 
@@ -130,9 +135,18 @@ The script writes `evaluate_market_results.csv` with these columns:
 - `moat_score` (1–10)
 - `moat_types_present` — e.g. *"Tech IP, Distribution"*
 - `deck_moat_claim` — founder's claimed USP
-- `moat_evidence` — concrete evidence supporting the moats
+- `moat_evidence` — concrete evidence supporting the moats (required substantive when score ≥ 7)
 - `moat_risks` — what would erode the moats
 - `moat_confidence`, `moat_analysis_summary`
+
+**Problem Validation**
+- `problem_score` (1–10)
+- `problem_severity` — `high` / `medium` / `low`
+- `problem_frequency` — `daily` / `weekly` / `monthly` / `yearly` / `one-time` / `unclear`
+- `existing_willingness_to_pay` — is there already spend on workarounds?
+- `demand_evidence` — concrete traction / signals (required substantive when score ≥ 7)
+- `problem_red_flags` — e.g. *"solution looking for a problem"*
+- `problem_confidence`, `problem_analysis_summary`
 
 **Founder**
 - `linkedin_fetch_status` — `fetched`, `login wall`, `HTTP 999`, `no linkedin url -> founder NA`, etc.
@@ -143,6 +157,8 @@ The script writes `evaluate_market_results.csv` with these columns:
 **Diagnostics**
 - `deck_fetch_status` — `downloaded N bytes`, `skipped (unsupported host)`, `no url`, etc.
 - `pitch_deck_accessed`, `pitch_deck_notes`, `web_sources_used`
+- `validation_warnings_market_moat_problem` — pipe-separated list of any schema/quality issues with the combined call's output
+- `validation_warnings_founder` — same, for the founder call
 - `market_moat_error`, `founder_error` — populated only if a call failed after all retries
 
 ---
@@ -173,6 +189,17 @@ Skeptical assessment of 8 moat categories:
 
 The prompt instructs: *"For each claimed moat, ask: is there EVIDENCE, or is it just a USP slide? Filed patents != granted; 'AI-powered' != tech moat; 'marketplace' != network effects."*
 
+### Problem Validation
+Assesses how REAL, URGENT, and VALIDATED the problem is — orthogonal to market size (a huge market can have weakly-validated problems, and vice versa). Evaluates:
+- Problem severity (painkiller vs vitamin)
+- Frequency (daily / weekly / monthly / yearly)
+- Prevalence (how many users)
+- Existing willingness-to-pay (current spend on workarounds is the strongest signal)
+- Articulation quality (does the founder describe WHO has it, HOW OFTEN, and WHY existing solutions fail?)
+- Evidence of demand (traction, testimonials, analogous market signals)
+
+Calibration anchors in the prompt: *"Most adults in Kenya can't access financial services" (M-Pesa) = 10; "Teams struggle with project tasks" (Asana, crowded) = 5; "I want a workout-feed app" = 3.*
+
 ### Founder
 LinkedIn-only. Rubric:
 - **9–10** = Repeat founder with prior exit, OR top-tier pedigree (IIT/IIM/Stanford/MIT/Wharton/Harvard) + senior role at a top tech co + domain expertise
@@ -182,6 +209,37 @@ LinkedIn-only. Rubric:
 - **1–2** = No verifiable background or red flags
 
 If LinkedIn returns a login wall, HTTP 999, or empty body, the founder score is left blank (NA). The script never falls back to Google Search for founder data — it would too easily attribute the wrong person.
+
+### Anti-bias guardrails (applied across all four scores)
+
+The prompts include explicit instructions to avoid common evaluation biases:
+
+1. **Independence** — score each axis separately; don't let one inflate another (halo effect is auto-flagged as a validation warning if all three business scores are identical)
+2. **Sector-neutral** — hype sectors (AI, Web3) get no bonus; boring sectors (logistics, agri, MSME) get no penalty
+3. **Geography-neutral** — India-only startups are scored on their actual SAM, not penalized for not being global
+4. **Founder-identity-neutral** for the business scores — gender, ethnicity, school don't factor into Market/MOAT/Problem
+5. **Aesthetics-neutral** — beautiful deck for a weak business is still a weak business
+6. **Buzzwords = zero** — "AI-powered", "blockchain", "revolutionary" count for nothing without specific technical evidence
+7. **Founder-claim skepticism** — all founder claims are hypotheses to verify, not facts
+8. **Calibration** — most batches cluster at 4–6; 9–10 are rare
+9. **No hallucination** — say "unable to verify" rather than invent
+10. **When in doubt, round down** — pick the lower of two adjacent scores and explain the upside case
+
+For founder scoring specifically: no name/gender/ethnicity inference, school-brand-neutral, recent-graduate cap of 5, evidence-only (no inference of unstated facts).
+
+### Output validation
+
+Every Gemini response is checked before being written to CSV. Warnings (not errors) are surfaced in `validation_warnings_market_moat_problem` and `validation_warnings_founder` columns. The checks include:
+
+- All required fields present and non-empty
+- All scores are integers in [1, 10] (string scores like `"8"` are auto-coerced)
+- Confidence values are one of `low` / `medium` / `high`
+- Problem severity / frequency match the allowed enum
+- `moat_evidence` is ≥ 50 chars when `moat_score` ≥ 7 (anti-laziness)
+- `demand_evidence` is ≥ 30 chars when `problem_score` ≥ 7 (anti-laziness)
+- Halo-effect heuristic: all three business scores identical = flagged for review
+
+Validation never blocks writing — the row is always persisted so you can audit suspect rows yourself.
 
 ---
 
