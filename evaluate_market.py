@@ -115,10 +115,12 @@ You MUST adhere to all of the following. Violating any of these is a failure mod
    not facts. Founders systematically overstate TAM, traction, moats, and PMF.
    Always cross-check claims against independent sources.
 
-8. CALIBRATION. Most real-world startup batches cluster at 4-6. Scores of 9-10
-   should be RARE (reserved for genuinely category-defining opportunities).
-   If you find yourself scoring 7+ on all three, you are probably anchoring on
-   the founder's narrative — reset and re-examine the evidence.
+8. USE THE FULL RANGE 1-10. Do NOT default to 5-7 for ambiguous cases.
+   A real batch should span at least 4 different values per axis. Be willing
+   to score 2-3 for weak businesses and 8-9 for genuinely promising ones.
+   Clustering everything at 6-7 is the #1 failure mode of automated scoring —
+   if a fashion-brand D2C and a graphene-manufacturing B2B get the same
+   market/moat/problem scores, that is almost certainly bias, not insight.
 
 9. NO HALLUCINATION. If you cannot find evidence for a claim via Google Search
    or in the deck, say so in the relevant field ("unable to verify") rather than
@@ -127,6 +129,12 @@ You MUST adhere to all of the following. Violating any of these is a failure mod
 
 10. WHEN IN DOUBT, ROUND DOWN. If genuinely torn between two adjacent scores,
     pick the LOWER one and explain the upside case in the summary.
+
+11. FORCING FUNCTION (apply BEFORE committing each score):
+    a) State what the next-lower score (X-1) would look like for this startup
+    b) State what the next-higher score (X+1) would look like for this startup
+    c) Confirm X is the closer match. If you can't articulate (a) and (b)
+       cleanly, you are anchoring — pick the more conservative score.
 
 ==================================================================================
 STARTUP PROFILE
@@ -198,19 +206,27 @@ Weigh ALL of these, then assign one integer 1-10:
   (e) Geographic reach (India-only vs globally expandable, sized correctly either way)
   (f) Timing — is the market forming, growing, mature, or saturating?
 
-Market rubric:
-  1-2  = tiny niche or shrinking; no realistic upside (<$100M SAM, declining)
-  3-4  = small / fragmented, weak growth or hostile dynamics (~$100M-$1B SAM)
-  5-6  = solid mid-size market (~$1-5B SAM), moderate growth, ordinary dynamics
-  7-8  = large market ($5-20B SAM) with strong growth or major tailwinds
-  9-10 = massive (>$20B SAM) hyper-growth or category-defining inflection
-
-Market calibration anchors (use these to keep yourself consistent):
-  - Stripe-at-founding (global online payments): 10
-  - Razorpay-at-founding (India digital payments): 8
-  - A regional D2C apparel brand: 5
-  - Niche B2B SaaS for one job function in one country: 4
-  - A college-campus-only food delivery app: 2
+PER-INTEGER MARKET ANCHORS (memorize these — score by closest match):
+   1 = Hobby market, <$10M global TAM, stagnant or shrinking. Example:
+       a custom-printed-tarot-card subscription for one city.
+   2 = Very small (~$10-100M TAM), no growth. Example: a niche
+       compliance-consulting practice serving 1 industry in 1 state.
+   3 = Small but stable (~$100-500M TAM), fragmented, low growth (<8%).
+       Example: a regional B2B equipment-leasing company.
+   4 = Sub-billion (~$500M-$1B TAM), moderate growth or weak tailwinds.
+       Example: specialty insurance for one professional category, India only.
+   5 = Solid mid-size (~$1-3B SAM), steady ~10% growth. Example: India D2C
+       ayurveda for women; vertical SaaS for Indian dental clinics.
+   6 = Large mid-size (~$3-5B SAM), healthy 12-18% growth. Example:
+       SMB accounting software in India; B2B logistics tooling India.
+   7 = Genuinely large ($5-10B SAM), strong 15-25% growth. Example: India
+       SMB digital payments; India digital health consumer apps.
+   8 = Very large ($10-25B SAM), high growth or major tailwinds (>20%).
+       Example: India fintech for SMBs broadly; India edtech K-12.
+   9 = Massive ($25-100B SAM), hypergrowth or category-defining. Example:
+       India SaaS-for-global-SMBs; India climate-tech infrastructure.
+  10 = Trillion-class TAM, once-a-decade inflection. Example: global AI
+       infrastructure platforms; global cross-border payments rails.
 
 ==================================================================================
 B) DIFFERENTIATION / MOAT SCORING
@@ -233,21 +249,36 @@ For EACH claimed moat, ask: is there EVIDENCE, or is it just a USP slide?
   - "Partnership announced" != exclusive distribution
   - "Proprietary algorithm" without specifics = no moat
 
-Moat rubric:
-  1-2  = commodity offering in a crowded space; no real differentiation; trivially replicable
-  3-4  = some differentiation but easily copied; weak/temporary moats; feature-level diff
-  5-6  = ONE real but vulnerable moat (e.g. brand, modest data, partnerships); a
-         well-funded entrant could erode it within 2 years
-  7-8  = TWO+ meaningful moats compounding (e.g. tech IP + distribution; data + switching costs)
-  9-10 = step-change defensibility incumbents cannot easily replicate (genuine network
-         effects at scale, granted patents in active use, structural data lead, regulatory monopoly)
-
-Moat calibration anchors:
-  - Google Search 2005 (data + scale + network effects): 10
-  - AWS 2010 (switching costs + scale): 9
-  - Stripe 2015 (developer brand + integrations): 7
-  - A SaaS with strong brand but no patents/network: 5
-  - A standard e-commerce store with no unique IP or distribution: 2
+PER-INTEGER MOAT ANCHORS (memorize these — score by closest match):
+   1 = Pure commodity in a hyper-crowded space; zero differentiation.
+       Example: yet another Instagram-store reselling generic apparel.
+   2 = Effectively a feature, not a company; replicable in a weekend.
+       Example: a thin UI wrapper around OpenAI's API with no fine-tuning,
+       no data, no distribution.
+   3 = Positioning differentiation only (cheaper, niche-focus); no IP,
+       no lock-in. Example: a "WhatsApp for doctors" me-too app.
+   4 = Light execution/brand differentiation but no structural moat;
+       a well-funded entrant could erode in <1 year. Example: regional
+       D2C food brand competing on freshness alone.
+   5 = ONE real but vulnerable moat — nascent brand OR modest data OR
+       weak partnerships. Erodes in 2 years against funded competition.
+       Example: D2C brand with 50K Instagram followers but no IP.
+   6 = ONE genuinely strong moat (real distribution exclusivity, demonstrated
+       brand pull, narrow regulatory cover) OR two weak moats stacking.
+       Example: B2B SaaS embedded in a few enterprise workflows.
+   7 = TWO real moats compounding (e.g. tech IP + distribution, OR data +
+       brand). Incumbents would need 2-3 yrs to catch up. Example: legit
+       vertical SaaS with deep workflow integration + niche data.
+   8 = Multi-layered moats including ONE structural one — granted patent
+       in active use, two-sided network effect starting to compound, OR
+       hard-to-obtain regulatory license. Example: neobank with banking
+       license + scale; OEM with patented manufacturing process at volume.
+   9 = Multiple structural moats compounding; clear data network effects
+       or scale advantages that strengthen over time. Example: AWS 2010,
+       Stripe 2017, Shopify 2018.
+  10 = Truly category-defining defensibility (planetary-scale data lead,
+       regulatory monopoly, network effects with billions of users).
+       Example: Google Search 2005, Visa/Mastercard, TSMC at 3nm.
 
 ==================================================================================
 C) PROBLEM VALIDATION SCORING
@@ -266,26 +297,38 @@ Evaluate ALL of these dimensions, then assign one integer 1-10:
   (f) Evidence of demand: traction (paying users, MRR, waitlist), cited user
       research, testimonials, analogous market signals.
 
-Problem rubric:
-  1-2  = "Solution looking for a problem"; problem is hypothetical/vague; no
-         evidence anyone wants this; vitamin not painkiller
-  3-4  = Real but minor / nice-to-have problem; few would pay; existing tools
-         already address it adequately
-  5-6  = Real problem with some validation; clear target user; moderate
-         willingness to pay; some traction OR analogous market signals
-  7-8  = Severe, frequent, well-validated problem; clear evidence of existing
-         spend on inferior solutions; founder articulates target user precisely;
-         strong demand signals (e.g. paying users, growing waitlist)
-  9-10 = Universal, painful, urgent problem affecting massive cohorts; clear
-         existing spend; founder shows deep customer empathy + concrete validation;
-         rare "obvious in hindsight" problems (think "I can't get a taxi" pre-Uber)
-
-Problem calibration anchors:
-  - "Most adults in Kenya can't access basic financial services" (M-Pesa): 10
-  - "Small businesses can't accept online payments without 6-week bank setup" (Stripe): 8
-  - "Teams struggle to organize tasks across email and Slack" (Asana — real but crowded): 5
-  - "I want a feed of my friends' workout activity" (low pain, low willingness to pay): 3
-  - "An app to remind me to drink water" (vitamin not painkiller): 2
+PER-INTEGER PROBLEM ANCHORS (memorize these — score by closest match):
+   1 = Solution looking for a problem; founder can't articulate WHO has it
+       or WHY. Example: "an app that combines your mood, your dog's mood,
+       and your friends' moods into one feed."
+   2 = Hypothetical / preachy problem; no demand, no spend, no validation.
+       Example: "people should drink more water" — true, but nobody pays.
+   3 = Real but minor; existing free tools / habits cover it. Example: "I
+       want a slightly nicer calendar app" in a market with 50 of them.
+   4 = Real problem affecting a definable group, but workarounds are
+       acceptable; few would actively pay. Example: "small teams can't
+       pick a single project tool" (Notion/Trello/etc. are good enough).
+   5 = Real, founder shows some validation (interviews, waitlist), clear
+       target user but moderate intensity; no significant existing spend
+       yet. Example: "Indian D2C founders need better influencer-analytics."
+   6 = Strong validation, growing willingness-to-pay; customers ARE
+       spending money on inferior solutions today; early paying traction.
+       Example: "SMBs in India can't get fast working-capital loans
+       without 3 weeks of paperwork."
+   7 = Severe, frequent pain with documented existing spend on workarounds;
+       founder shows deep customer empathy AND concrete demand signals
+       (paying users, growing MRR, testimonials). Example: "Indian gig
+       workers have no access to short-term healthcare financing."
+   8 = Universal pain in a large cohort; clear evidence of serious money
+       being spent on inferior solutions today; strong traction from day 1.
+       Example: "Indian SMBs can't accept online payments without a 6-week
+       bank setup" (Razorpay/Stripe early).
+   9 = Painfully obvious-in-hindsight problem affecting massive cohorts;
+       founder lived the problem; near-immediate demand once solution ships.
+       Example: "Most adults in Kenya can't access basic banking" (M-Pesa).
+  10 = Generational-level pain; absence of solution is itself a crisis;
+       users will do almost anything to solve it. Example: "I can't get a
+       taxi when I need one" pre-Uber in any major city.
 
 ==================================================================================
 OUTPUT

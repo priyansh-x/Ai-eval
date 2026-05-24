@@ -224,9 +224,12 @@ The prompts include explicit instructions to avoid common evaluation biases:
 5. **Aesthetics-neutral** — beautiful deck for a weak business is still a weak business
 6. **Buzzwords = zero** — "AI-powered", "blockchain", "revolutionary" count for nothing without specific technical evidence
 7. **Founder-claim skepticism** — all founder claims are hypotheses to verify, not facts
-8. **Calibration** — most batches cluster at 4–6; 9–10 are rare
+8. **Use the full range 1–10** — do NOT default to 5–7 for ambiguous cases. A real batch should span at least 4 different values per axis. Clustering everything at 6–7 is the #1 failure mode of automated scoring.
 9. **No hallucination** — say "unable to verify" rather than invent
 10. **When in doubt, round down** — pick the lower of two adjacent scores and explain the upside case
+11. **Forcing function** — before committing to score X, state what X-1 and X+1 would look like for this startup. If you can't articulate both cleanly, pick the more conservative score.
+
+Each axis (Market, MOAT, Problem Validation) has a **concrete worked example for every integer 1 → 10** in the prompt, not just band-level descriptions. This forces the model to actually pick the integer that best matches the closest example rather than defaulting to a comfortable mid-range.
 
 ### Output validation
 
