@@ -115,12 +115,19 @@ You MUST adhere to all of the following. Violating any of these is a failure mod
    not facts. Founders systematically overstate TAM, traction, moats, and PMF.
    Always cross-check claims against independent sources.
 
-8. USE THE FULL RANGE 1-10. Do NOT default to 5-7 for ambiguous cases.
-   A real batch should span at least 4 different values per axis. Be willing
-   to score 2-3 for weak businesses and 8-9 for genuinely promising ones.
-   Clustering everything at 6-7 is the #1 failure mode of automated scoring —
-   if a fashion-brand D2C and a graphene-manufacturing B2B get the same
-   market/moat/problem scores, that is almost certainly bias, not insight.
+8. PERCENTILE CALIBRATION. You are scoring against 600+ applicants in a
+   startup competition. Treat each score as a percentile statement:
+     Score 1-2 ≈ bottom 5%  (red flags, fundamentally weak)
+     Score 3-4 ≈ next 20%   (real but clearly below median)
+     Score 5    = THE MEDIAN APPLICANT — solid, unexceptional, "fine"
+     Score 6    = above median (something is genuinely working)
+     Score 7    = top 25%   (genuinely strong on this axis)
+     Score 8    = top 10%   (would clearly stand out)
+     Score 9-10 = top 3%    (category-defining; rare)
+   When you assign score X, you are explicitly claiming this startup is
+   better than (X-5)*10% of the competition pool on this axis. If you score
+   7 on all three axes, you are claiming this is a top-25% startup overall.
+   That is RARE. If 5 startups in a row are scoring 6-7, you are anchoring.
 
 9. NO HALLUCINATION. If you cannot find evidence for a claim via Google Search
    or in the deck, say so in the relevant field ("unable to verify") rather than
@@ -130,11 +137,18 @@ You MUST adhere to all of the following. Violating any of these is a failure mod
 10. WHEN IN DOUBT, ROUND DOWN. If genuinely torn between two adjacent scores,
     pick the LOWER one and explain the upside case in the summary.
 
-11. FORCING FUNCTION (apply BEFORE committing each score):
-    a) State what the next-lower score (X-1) would look like for this startup
-    b) State what the next-higher score (X+1) would look like for this startup
-    c) Confirm X is the closer match. If you can't articulate (a) and (b)
-       cleanly, you are anchoring — pick the more conservative score.
+11. EXTERNALIZED FORCING FUNCTION (REQUIRED in JSON output).
+    For each of the three scores you MUST output two extra fields:
+      "<axis>_why_not_lower": one sentence explaining why this startup is
+        better than score X-1, referencing the X-1 ANCHOR by name (dollar
+        amount, moat type, or problem example from the per-integer list).
+      "<axis>_why_not_higher": one sentence explaining why this startup
+        falls SHORT of score X+1, referencing the X+1 ANCHOR by name.
+    Generic answers ("market is smaller", "less defensible") will be
+    rejected. You MUST quote a specific element of the anchor for X-1 and X+1.
+    If score == 1, set "_why_not_lower" to "N/A — already at minimum".
+    If score == 10, set "_why_not_higher" to "N/A — already at maximum".
+    Doing this externalization is THE primary anti-clustering mechanism.
 
 ==================================================================================
 STARTUP PROFILE
@@ -339,7 +353,9 @@ All scores MUST be integers in [1, 10]. All confidence values MUST be one of
 "low", "medium", "high".
 
 {{
-  "market_size_score": 7,
+  "market_size_score": 5,
+  "market_why_not_lower": "A score of 4 would mean sub-$1B TAM. This startup is BETTER than a 4 because [reference the score-X-1 anchor with a concrete differentiator].",
+  "market_why_not_higher": "A score of 6 would mean ~$3-5B SAM with 12-18% growth. This startup falls SHORT of a 6 because [reference the score-X+1 anchor with a concrete deficit].",
   "calculated_tam": "Your INDEPENDENT TAM, e.g. '$12B SAM by 2030 (India)' + 1-line basis",
   "deck_tam_claim": "What the deck/founder claimed, or 'not stated' / 'not available'",
   "cagr": "Your researched CAGR + year range, e.g. '18% (2024-2030)', or 'unknown'",
@@ -349,17 +365,21 @@ All scores MUST be integers in [1, 10]. All confidence values MUST be one of
   "market_analysis_summary": "3-5 sentences integrating evidence, explaining why this exact score and not one notch higher or lower.",
   "market_confidence": "low | medium | high",
 
-  "moat_score": 6,
+  "moat_score": 5,
+  "moat_why_not_lower": "A score of 4 would mean only execution/brand differentiation with no structural moat. This startup is BETTER than a 4 because [reference the score-X-1 anchor].",
+  "moat_why_not_higher": "A score of 6 would mean ONE genuinely strong moat (distribution exclusivity, real brand pull) or two stacking weak ones. This startup falls SHORT because [reference the score-X+1 anchor].",
   "moat_types_present": "Comma list of moats GENUINELY present with evidence, e.g. 'Tech IP, Distribution'. Empty string if none.",
   "deck_moat_claim": "What the deck/founder claimed as their moat/USP, or 'not stated'",
-  "moat_evidence": "Specific evidence for the moats listed (e.g. 'Patent US-12345 granted 2023', 'Exclusive HDFC partnership verified via press release'). If moat_score >= 7, this MUST be substantive (50+ chars).",
+  "moat_evidence": "Specific evidence for the moats listed (e.g. 'Patent US-12345 granted 2023'). If moat_score >= 7, this MUST be substantive (50+ chars).",
   "moat_risks": "What would erode the moats — 1-2 sentences",
   "moat_analysis_summary": "3-5 sentences justifying this exact score. Single line.",
   "moat_confidence": "low | medium | high",
 
-  "problem_score": 7,
+  "problem_score": 5,
+  "problem_why_not_lower": "A score of 4 would mean a real problem but with acceptable workarounds. This startup is BETTER than a 4 because [reference the score-X-1 anchor].",
+  "problem_why_not_higher": "A score of 6 would mean strong validation + customers already paying for inferior solutions. This startup falls SHORT because [reference the score-X+1 anchor].",
   "problem_severity": "high | medium | low",
-  "problem_frequency": "daily | weekly | monthly | yearly | one-time | unclear",
+  "problem_frequency": "daily | weekly | monthly | yearly | continuous | one-time | unclear",
   "existing_willingness_to_pay": "Brief: are people already spending on this? Workarounds? Quote a dollar amount or alternative if possible.",
   "demand_evidence": "Concrete evidence: traction numbers, testimonials, analogous market data. If problem_score >= 7, this MUST be substantive (30+ chars).",
   "problem_red_flags": "e.g. 'solution looking for a problem', 'vague TG', 'no demand evidence', or 'none observed'",
@@ -438,7 +458,7 @@ def parse_json_response(text: str) -> dict:
 
 ALLOWED_CONFIDENCE = {"low", "medium", "high"}
 ALLOWED_SEVERITY = {"high", "medium", "low"}
-ALLOWED_FREQUENCY = {"daily", "weekly", "monthly", "yearly", "one-time", "unclear"}
+ALLOWED_FREQUENCY = {"daily", "weekly", "monthly", "yearly", "continuous", "one-time", "unclear"}
 
 
 def _coerce_score(value, field_name, errors):
@@ -521,10 +541,32 @@ def validate_market_moat_problem(result: dict) -> list[str]:
     if isinstance(result.get("problem_score"), int) and result["problem_score"] >= 7:
         _check_substantive(result.get("demand_evidence"), "demand_evidence (for problem_score>=7)", 30, errors)
 
+    # Externalized forcing function: each axis must explain why-not-lower and
+    # why-not-higher to prove the model actually did the comparative reasoning.
+    axis_fields = (
+        ("market_size_score", "market_why_not_lower", "market_why_not_higher"),
+        ("moat_score",         "moat_why_not_lower",   "moat_why_not_higher"),
+        ("problem_score",      "problem_why_not_lower", "problem_why_not_higher"),
+    )
+    for score_field, low_field, high_field in axis_fields:
+        score = result.get(score_field)
+        if isinstance(score, int):
+            if score > 1:
+                _check_substantive(result.get(low_field),
+                                   f"{low_field} (required when score>1)", 40, errors)
+            if score < 10:
+                _check_substantive(result.get(high_field),
+                                   f"{high_field} (required when score<10)", 40, errors)
+
     # Halo-effect check: warn (not error) if all three scores collapse to the same value
     scores = [result.get(f) for f in ("market_size_score", "moat_score", "problem_score")]
     if all(isinstance(s, int) for s in scores) and len(set(scores)) == 1:
         errors.append(f"halo-effect suspect: all three scores identical ({scores[0]}) — review prompts/output")
+
+    # Soft clustering check: warn if all three scores fall in {6, 7, 8} —
+    # the failure mode where the model defaults to "polite mid-high"
+    if all(isinstance(s, int) for s in scores) and all(6 <= s <= 8 for s in scores):
+        errors.append(f"score-cluster suspect: all three scores in 6-8 ({scores}) — model may be anchoring to mid-high default")
 
     return errors
 
@@ -603,6 +645,8 @@ OUTPUT_COLUMNS = [
     # market
     "deck_fetch_status",
     "market_size_score",
+    "market_why_not_lower",
+    "market_why_not_higher",
     "calculated_tam",
     "deck_tam_claim",
     "cagr",
@@ -613,6 +657,8 @@ OUTPUT_COLUMNS = [
     "market_analysis_summary",
     # moat
     "moat_score",
+    "moat_why_not_lower",
+    "moat_why_not_higher",
     "moat_types_present",
     "deck_moat_claim",
     "moat_evidence",
@@ -621,6 +667,8 @@ OUTPUT_COLUMNS = [
     "moat_analysis_summary",
     # problem validation
     "problem_score",
+    "problem_why_not_lower",
+    "problem_why_not_higher",
     "problem_severity",
     "problem_frequency",
     "existing_willingness_to_pay",
@@ -898,6 +946,8 @@ def main():
 
             out.update({
                 "market_size_score": result.get("market_size_score"),
+                "market_why_not_lower": result.get("market_why_not_lower"),
+                "market_why_not_higher": result.get("market_why_not_higher"),
                 "calculated_tam": result.get("calculated_tam"),
                 "deck_tam_claim": result.get("deck_tam_claim"),
                 "cagr": result.get("cagr"),
@@ -907,6 +957,8 @@ def main():
                 "market_confidence": result.get("market_confidence"),
                 "market_analysis_summary": result.get("market_analysis_summary"),
                 "moat_score": result.get("moat_score"),
+                "moat_why_not_lower": result.get("moat_why_not_lower"),
+                "moat_why_not_higher": result.get("moat_why_not_higher"),
                 "moat_types_present": result.get("moat_types_present"),
                 "deck_moat_claim": result.get("deck_moat_claim"),
                 "moat_evidence": result.get("moat_evidence"),
@@ -914,6 +966,8 @@ def main():
                 "moat_confidence": result.get("moat_confidence"),
                 "moat_analysis_summary": result.get("moat_analysis_summary"),
                 "problem_score": result.get("problem_score"),
+                "problem_why_not_lower": result.get("problem_why_not_lower"),
+                "problem_why_not_higher": result.get("problem_why_not_higher"),
                 "problem_severity": result.get("problem_severity"),
                 "problem_frequency": result.get("problem_frequency"),
                 "existing_willingness_to_pay": result.get("existing_willingness_to_pay"),
