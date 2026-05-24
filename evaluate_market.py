@@ -27,6 +27,11 @@ FETCHABLE_DECK_HOSTS = ("conquestbits.org",)
 MAX_DECK_BYTES = 20 * 1024 * 1024  # 20 MB cap before we skip an attachment
 DECK_DOWNLOAD_TIMEOUT = 30
 
+# Gemini's inline file parts only accept these MIME types for documents. PowerPoint
+# (.pptx), Word (.docx), Keynote, etc. will be rejected with HTTP 400. Anything not
+# on this list gets downloaded but NOT attached -- the eval falls back to text-only.
+SUPPORTED_DECK_MIMES = {"application/pdf"}
+
 _client = None
 
 
@@ -350,12 +355,23 @@ def download_deck(url: str):
     if len(data) > MAX_DECK_BYTES:
         return None, None, f"download skipped: file too large ({len(data)} bytes)"
 
-    if "pdf" in content_type or url.lower().endswith(".pdf"):
+    # Detect MIME: trust PDF magic bytes first, then content-type, then URL hint.
+    is_pdf_magic = data[:4] == b"%PDF"
+    if is_pdf_magic or "pdf" in content_type or url.lower().endswith(".pdf"):
         mime = "application/pdf"
     elif content_type:
         mime = content_type
     else:
-        mime = "application/pdf"  # best guess for the conquestbits endpoint
+        mime = "application/octet-stream"
+
+    # Skip attachment for anything Gemini can't read inline (pptx, docx, etc.)
+    # The row still gets fully evaluated from text + Google Search.
+    if mime not in SUPPORTED_DECK_MIMES:
+        size_kb = len(data) / 1024
+        return None, None, (
+            f"downloaded {size_kb:,.0f} KB but format '{mime}' is not Gemini-supported "
+            f"-- skipping attachment (text-only eval)"
+        )
 
     return data, mime, f"downloaded {len(data)} bytes ({mime})"
 
@@ -470,6 +486,16 @@ def validate_market_moat_problem(result: dict) -> list[str]:
     return errors
 
 
+def _http_code(err) -> int | None:
+    """Best-effort extraction of an HTTP status code from a google-genai APIError."""
+    code = getattr(err, "code", None) or getattr(err, "status_code", None)
+    if isinstance(code, int):
+        return code
+    # Fall back to parsing the leading "NNN" from the str representation
+    m = re.match(r"\s*(\d{3})\b", str(err))
+    return int(m.group(1)) if m else None
+
+
 def _gemini_call(contents, max_retries: int = 5) -> dict:
     config = types.GenerateContentConfig(
         tools=[types.Tool(google_search=types.GoogleSearch())]
@@ -486,8 +512,17 @@ def _gemini_call(contents, max_retries: int = 5) -> dict:
             return parse_json_response(response.text)
         except APIError as e:
             last_err = e
+            code = _http_code(e)
+            # 4xx (except 429 rate-limit) are permanent client errors — fail fast
+            # rather than burn 70+ seconds of exponential backoff on a guaranteed loss.
+            if code is not None and 400 <= code < 500 and code != 429:
+                print(f"    APIError {code} (non-retryable client error): "
+                      f"{truncate(str(e), 120)}")
+                raise
             delay = base_delay * (2 ** attempt)
-            print(f"    APIError on attempt {attempt + 1}: {e}. Retrying in {delay}s...")
+            print(f"    APIError on attempt {attempt + 1}"
+                  + (f" (HTTP {code})" if code else "")
+                  + f": retrying in {delay}s...")
             time.sleep(delay)
         except (ValueError, json.JSONDecodeError) as e:
             last_err = e
