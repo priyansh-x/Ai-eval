@@ -115,19 +115,26 @@ You MUST adhere to all of the following. Violating any of these is a failure mod
    not facts. Founders systematically overstate TAM, traction, moats, and PMF.
    Always cross-check claims against independent sources.
 
-8. PERCENTILE CALIBRATION. You are scoring against 600+ applicants in a
-   startup competition. Treat each score as a percentile statement:
-     Score 1-2 ≈ bottom 5%  (red flags, fundamentally weak)
-     Score 3-4 ≈ next 20%   (real but clearly below median)
-     Score 5    = THE MEDIAN APPLICANT — solid, unexceptional, "fine"
-     Score 6    = above median (something is genuinely working)
-     Score 7    = top 25%   (genuinely strong on this axis)
-     Score 8    = top 10%   (would clearly stand out)
-     Score 9-10 = top 3%    (category-defining; rare)
+8. PERCENTILE CALIBRATION — against the ACTUAL Conquest pool, not abstract
+   "all possible startups". This pool's realistic distribution:
+     Score 1-2 ≈ ~8%  (red flags, no validation, hobby-tier ideas)
+     Score 3-4 ≈ ~35% (real but clearly weak — many Pre-MVP/Ideation rows)
+     Score 5   ≈ ~30% THE MEDIAN APPLICANT — a real but early Indian
+                      startup with realistic but unproven ambition
+     Score 6   ≈ ~15% (above median — some traction or differentiation)
+     Score 7   ≈ ~8%  (genuinely strong on this axis)
+     Score 8   ≈ ~3%  (excellent, would clearly stand out)
+     Score 9   ≈ ~1%  (rare — must have verifiable scale evidence)
+     Score 10  ≈ ~0%  (essentially never warranted in this pool)
+
+   CRITICAL: most of this pool clusters at 4-5 (typical early-stage Indian
+   bootstrapped startups). If you find yourself scoring 6-7 repeatedly, you
+   are calibrating against a Silicon-Valley-scale benchmark, NOT against
+   what this pool actually contains. Re-anchor downward.
+
    When you assign score X, you are explicitly claiming this startup is
-   better than (X-5)*10% of the competition pool on this axis. If you score
-   7 on all three axes, you are claiming this is a top-25% startup overall.
-   That is RARE. If 5 startups in a row are scoring 6-7, you are anchoring.
+   better than (cumulative %)-up-to-X of the actual pool on this axis.
+   If you score 7, you're saying top ~12%. If 8, top ~4%. If 9, top ~1%.
 
 9. NO HALLUCINATION. If you cannot find evidence for a claim via Google Search
    or in the deck, say so in the relevant field ("unable to verify") rather than
@@ -149,6 +156,119 @@ You MUST adhere to all of the following. Violating any of these is a failure mod
     If score == 1, set "_why_not_lower" to "N/A — already at minimum".
     If score == 10, set "_why_not_higher" to "N/A — already at maximum".
     Doing this externalization is THE primary anti-clustering mechanism.
+
+==================================================================================
+POOL CONTEXT — calibrate against THIS pool, not against abstract "startups"
+==================================================================================
+This startup is one of 619 applicants to the Conquest competition (BITS Pilani).
+The pool's actual demographics:
+- 79% of teams are 1-10 people; 84% are bootstrapped or grant-funded (NOT VC-scale)
+- Stage mix: 16% Ideation/Pre-MVP, 40% MVP, 32% Growth, 5% Expansion
+- Only 48% have any revenue at all
+- Among revenue-positive: MEDIAN MRR is ₹1L/month (~$1,200/month) — hobbyist scale
+  75% of revenue-positive have <₹10L/month MRR (~$12K)
+  Only ~10% have ₹10L+ MRR
+- 43% claim patents but most are "filed" not "granted in active use"
+- Dominant sectors: Healthcare/Digital Health, AI, Agriculture/Food, Climate,
+  Consumer, Fintech, Manufacturing
+- Most pitch decks are well-formatted but most underlying businesses are early
+  and unproven — do not let deck polish inflate your scores
+
+WHAT THIS MEANS for scoring:
+- A typical applicant from this pool deserves a 4-5 across axes, NOT a 6-7
+- Anything claiming "growth stage" with <₹5L MRR is closer to 4 than 7
+- A "patent filed" claim with no granted IP is NOT a moat — at best a 4
+- "We did 3 customer interviews" is weak validation — closer to 3-4 on problem
+- 7+ requires concrete, verifiable evidence of either real traction (₹10L+ MRR,
+  named enterprise customers, etc.) OR genuine structural defensibility
+- 8+ requires the startup to be in the top ~3% of this pool — be very stingy
+
+==================================================================================
+HARD EVIDENCE GATES — apply BEFORE choosing any score
+==================================================================================
+These are MANDATORY ceilings. Read every gate. Apply the strictest cap that fits.
+
+THE TWO MOST IMPORTANT RULES (READ TWICE):
+
+RULE A — DEFAULT-DOWN ON WEAK EVIDENCE.
+When evidence is weak, absent, or only claimed in the deck without
+independent confirmation, the correct score is 3-4, NOT 5. Score 5 is
+reserved for startups WITH real (early-but-verifiable) validation. If you
+catch yourself defaulting to 5 because "nothing is clearly wrong", you are
+anchoring. Drop to 3 or 4. It is FINE — even expected — to score MOAT 2-3
+and Problem 3-4 for typical early-stage MVP startups. That is what most of
+this pool looks like.
+
+RULE B — CLAIMED ≠ VERIFIED.
+A claim made ONLY in the pitch deck or founder text, with no independent
+Google-search confirmation (press, public records, named third-party
+artifact), counts as a WEAK signal and supports score 3-4 only. Examples
+of weak-only claims:
+  - "proprietary AI/algorithm/tech" without granted patent or technical paper
+  - "trademark filed" / "patent pending" without grant
+  - "in-house developed" without a named third-party customer
+  - "partnerships with X" without a press release / public confirmation
+  - "first-mover" / "first-of-its-kind" without independent corroboration
+By contrast, INDEPENDENTLY VERIFIED evidence (e.g. a named enterprise
+client confirmed by their press, a granted patent number, a regulatory
+license number, a press-announced partnership) supports higher scores.
+A startup with verified Amul/Mother-Dairy/DP-World-class clients in active
+contract is a 6-7 on MOAT, not a 5.
+
+ANTI-HALO TIE-BREAKER. If your three scores are about to come out
+identical (X/X/X), force-differentiate: keep the strongest axis at X,
+move at least one weaker axis to X-1 or X-2. Three identical scores is
+almost always a tell that you are anchoring instead of evaluating.
+
+MARKET SCORE GATES:
+- market_size_score > 6 REQUIRES a cited source (specific market research firm,
+  named report, or comparable-company revenue analogy) for the TAM estimate.
+  Without a citation, CAP MARKET AT 6.
+- market_size_score > 7 REQUIRES the startup's actual product/wedge to plausibly
+  reach this TAM (not just claim it). If the wedge is narrow but the founder
+  is citing the whole sector's TAM, CAP MARKET AT 7.
+
+MOAT SCORE GATES:
+- moat_score > 5 REQUIRES one of: (a) GRANTED (not filed) patent + evidence
+  of its use in product, (b) named exclusive distribution contract verified
+  by press / announcement, (c) demonstrated brand pull (named press +
+  organic traction), (d) regulatory license number, OR (e) measurable
+  network effects with cited user counts. Without (a)-(e), CAP MOAT AT 5.
+- moat_score > 7 REQUIRES TWO of the above with verifiable evidence.
+- "Patent pending", "patent filed", "first-mover advantage", and "proprietary
+  technology" (without specifics) are NOT MOATS. They support score 4-5 at best.
+
+PROBLEM SCORE GATES (the most-violated; apply VERY strictly):
+- problem_score > 5 REQUIRES at least one of: (a) named paying customers
+  with a stated count, (b) MRR specifically for THIS startup (cite the
+  rupee amount), (c) cited PER-CUSTOMER existing spend on workarounds
+  (e.g., "SMBs currently pay ₹15K/mo to chartered accountants"), or (d)
+  signed LOIs/contracts with NAMED entities. Without (a)-(d), CAP PROBLEM AT 5.
+- problem_score > 6 REQUIRES verifiable startup-specific traction: e.g.
+  >₹2L MRR + customer count, OR >5 named enterprise pilots, OR a waitlist
+  with cited number of signups.
+- problem_score > 7 REQUIRES BOTH meaningful traction (>₹10L MRR or 100+
+  paying users or major enterprise contracts) AND documented per-customer
+  spend on inferior workarounds.
+- Sector-wide reports ("the Indian fintech market is $50B") do NOT validate
+  THIS startup's problem. They only validate the market opportunity.
+- Founder's articulate problem description does NOT validate the problem.
+  Articulation is necessary but NOT sufficient.
+
+STAGE-BASED CAPS (use the Stage field, applied AFTER the above gates):
+- Stage = Ideation:         ALL three scores cap at 5 (no MVP -> no validation possible)
+- Stage = Pre-MVP:          problem_score and moat_score cap at 5; market_score cap at 7
+- Stage = MVP without MRR:  problem_score caps at 5; moat_score caps at 5
+- Stage = MVP with MRR <₹2L: problem_score caps at 6
+- Stage = MVP with MRR ₹2-10L: problem_score caps at 7
+- Stage = Growth without MRR or with MRR <₹5L: problem_score caps at 6
+- Stage = Growth with MRR >₹10L: no automatic cap; apply rubric strictly
+- Stage = Expansion: no automatic cap
+
+EXCEPTIONS to stage caps: a startup may exceed its stage cap ONLY if it has
+extraordinary verifiable evidence (e.g., granted patent already in use,
+multi-crore enterprise contract signed, regulatory license already in hand).
+You MUST cite the specific exception in the relevant analysis_summary field.
 
 ==================================================================================
 STARTUP PROFILE
@@ -220,27 +340,44 @@ Weigh ALL of these, then assign one integer 1-10:
   (e) Geographic reach (India-only vs globally expandable, sized correctly either way)
   (f) Timing — is the market forming, growing, mature, or saturating?
 
-PER-INTEGER MARKET ANCHORS (memorize these — score by closest match):
-   1 = Hobby market, <$10M global TAM, stagnant or shrinking. Example:
-       a custom-printed-tarot-card subscription for one city.
-   2 = Very small (~$10-100M TAM), no growth. Example: a niche
-       compliance-consulting practice serving 1 industry in 1 state.
-   3 = Small but stable (~$100-500M TAM), fragmented, low growth (<8%).
-       Example: a regional B2B equipment-leasing company.
-   4 = Sub-billion (~$500M-$1B TAM), moderate growth or weak tailwinds.
-       Example: specialty insurance for one professional category, India only.
-   5 = Solid mid-size (~$1-3B SAM), steady ~10% growth. Example: India D2C
-       ayurveda for women; vertical SaaS for Indian dental clinics.
-   6 = Large mid-size (~$3-5B SAM), healthy 12-18% growth. Example:
-       SMB accounting software in India; B2B logistics tooling India.
-   7 = Genuinely large ($5-10B SAM), strong 15-25% growth. Example: India
-       SMB digital payments; India digital health consumer apps.
-   8 = Very large ($10-25B SAM), high growth or major tailwinds (>20%).
-       Example: India fintech for SMBs broadly; India edtech K-12.
-   9 = Massive ($25-100B SAM), hypergrowth or category-defining. Example:
-       India SaaS-for-global-SMBs; India climate-tech infrastructure.
-  10 = Trillion-class TAM, once-a-decade inflection. Example: global AI
-       infrastructure platforms; global cross-border payments rails.
+PER-INTEGER MARKET ANCHORS (memorize these — score by closest match;
+each anchor is calibrated to startups actually found in this pool):
+
+   1 = Hyper-local micro-niche, <100K addressable users globally, <$10M TAM.
+       Example: a rental marketplace for one type of equipment in one
+       Indian city; a paid newsletter for one ultra-niche hobby.
+   2 = Very small market, $10-50M TAM, stagnant or shrinking. Example:
+       a physical product for one Tier-3 demographic; a consulting service
+       for one rare professional certification.
+   3 = Small India market, $50-300M TAM, fragmented, low growth (<10%).
+       Example: a regional component supplier to one industrial vertical;
+       a hyperlocal D2C brand in one city in one category.
+   4 = Sub-billion India TAM ($300M-$1B), moderate growth (10-15%).
+       Example: vertical SaaS for a single Indian profession (e.g.
+       dentists); specialty insurance for one professional category.
+   5 = TYPICAL OF THIS POOL — India SAM $1-3B, healthy growth (12-18%).
+       Example: a general D2C wellness brand; B2B SaaS for Indian SMBs
+       in one function; consumer app for a defined user segment.
+   6 = Above pool median — India SAM $3-8B, strong growth (15-25%) or
+       major tailwinds. Example: fintech infrastructure for SMB lending;
+       K-12 edtech for vernacular learners; vertical SaaS with global
+       expansion optionality.
+   7 = Top quartile of pool — SAM $8-20B with strong growth. REQUIRES
+       evidence the startup can actually reach this market (not just
+       claim it). Example: broad India SMB fintech; India digital health
+       for chronic conditions at scale; agri infrastructure for crop
+       value chains.
+   8 = Top 10% of pool — SAM $20-50B+, hypergrowth or category-defining
+       for India. REQUIRES strong evidence (cited reports + comparable
+       company data + plausible execution path). Example: core India
+       climate-tech infrastructure (carbon, energy storage); AI infra
+       platform with global TAM.
+   9 = Top 3% of pool — globally relevant ($50B+ global TAM), with India
+       platform play AND verifiable execution path. RARE. Example:
+       global SaaS-from-India platform with US/EU expansion already
+       happening; deep tech with verified global applicability.
+  10 = Once-a-decade global inflection ($200B+ global TAM). ESSENTIALLY
+       NEVER WARRANTED IN THIS POOL. If considering 10, default to 8 or 9.
 
 ==================================================================================
 B) DIFFERENTIATION / MOAT SCORING
@@ -263,36 +400,61 @@ For EACH claimed moat, ask: is there EVIDENCE, or is it just a USP slide?
   - "Partnership announced" != exclusive distribution
   - "Proprietary algorithm" without specifics = no moat
 
-PER-INTEGER MOAT ANCHORS (memorize these — score by closest match):
-   1 = Pure commodity in a hyper-crowded space; zero differentiation.
-       Example: yet another Instagram-store reselling generic apparel.
-   2 = Effectively a feature, not a company; replicable in a weekend.
-       Example: a thin UI wrapper around OpenAI's API with no fine-tuning,
-       no data, no distribution.
-   3 = Positioning differentiation only (cheaper, niche-focus); no IP,
-       no lock-in. Example: a "WhatsApp for doctors" me-too app.
-   4 = Light execution/brand differentiation but no structural moat;
-       a well-funded entrant could erode in <1 year. Example: regional
-       D2C food brand competing on freshness alone.
-   5 = ONE real but vulnerable moat — nascent brand OR modest data OR
-       weak partnerships. Erodes in 2 years against funded competition.
-       Example: D2C brand with 50K Instagram followers but no IP.
-   6 = ONE genuinely strong moat (real distribution exclusivity, demonstrated
-       brand pull, narrow regulatory cover) OR two weak moats stacking.
-       Example: B2B SaaS embedded in a few enterprise workflows.
-   7 = TWO real moats compounding (e.g. tech IP + distribution, OR data +
-       brand). Incumbents would need 2-3 yrs to catch up. Example: legit
-       vertical SaaS with deep workflow integration + niche data.
-   8 = Multi-layered moats including ONE structural one — granted patent
-       in active use, two-sided network effect starting to compound, OR
-       hard-to-obtain regulatory license. Example: neobank with banking
-       license + scale; OEM with patented manufacturing process at volume.
-   9 = Multiple structural moats compounding; clear data network effects
-       or scale advantages that strengthen over time. Example: AWS 2010,
-       Stripe 2017, Shopify 2018.
-  10 = Truly category-defining defensibility (planetary-scale data lead,
-       regulatory monopoly, network effects with billions of users).
-       Example: Google Search 2005, Visa/Mastercard, TSMC at 3nm.
+PER-INTEGER MOAT ANCHORS (memorize these — score by closest match;
+each anchor is calibrated to startups actually found in this pool):
+
+   1 = No moat at all; pure copy of incumbents. Example: yet another
+       Instagram-store reselling generic apparel; me-too service in a
+       saturated market with no differentiation.
+   2 = Feature, not a company; replicable in a weekend by a competent
+       team. Example: thin UI wrapper around an LLM API with no
+       fine-tuning, no proprietary data, no exclusive distribution;
+       another no-code form builder; solo-founder MVP with literally
+       nothing but an idea.
+   3 = MOST COMMON FOR EARLY-STAGE in this pool: an MVP/Pre-MVP with
+       claimed differentiation ("proprietary tech", "first-mover",
+       "filed a patent") but NOTHING independently verifiable.
+       Positioning-only (cheaper, niche-focus); no IP, no lock-in, no
+       network effects. Example: "WhatsApp for doctors" me-too; B2B
+       SaaS with claimed proprietary algorithms but no granted IP;
+       D2C brand with <10K followers and no press.
+   4 = Light execution/brand differentiation with at least ONE small
+       verifiable signal (a named pilot customer, modest organic
+       traction, or a clearly filed-but-unverified patent in a deep-tech
+       space). Well-funded competitor could erode in <1 year. Example:
+       regional D2C brand with one named retail listing; B2B SaaS with
+       one paying pilot logo; deep-tech with a publicly-visible patent
+       filing in a real technical area.
+   5 = ONE early-stage moat WITH REAL VERIFIABLE BASIS — a meaningful
+       nascent brand (>50K real organic followers + press mentions) OR
+       multiple named pilot customers OR small but measurable network
+       effect (e.g. monetized two-sided community) OR a granted (not
+       pending) patent in a technical area. This requires INDEPENDENT
+       evidence, not just deck claims. A startup with only "in-house
+       tech" + "filed patent" + no verified clients is NOT a 5 — it's
+       a 3 or 4.
+   6 = Above pool median — ONE genuinely strong moat WITH EVIDENCE:
+       granted patent IN ACTIVE USE in product, OR demonstrated brand
+       pull with paying customers, OR named distribution exclusivity.
+       Example: deep-tech with one granted patent driving real cost/
+       quality advantage; fintech with verified exclusive bank deal.
+   7 = Top quartile — TWO real moats compounding (e.g. tech IP +
+       distribution; data + brand; network effects nascent + switching
+       costs). REQUIRES verifiable evidence of both. Example: vertical
+       SaaS deeply embedded in customer workflows WITH proprietary
+       data accumulating.
+   8 = Top 10% — structural moat ALREADY COMPOUNDING — verified
+       two-sided network effects, regulatory license hard to obtain
+       (banking, healthcare, defense), or unique data lead at scale.
+       REQUIRES concrete evidence (license number, active user counts,
+       data scale figures). Example: neobank with banking license +
+       10K+ active users; healthtech with regulatory clearance + scale.
+   9 = Top 3% — multiple compounding structural moats; clear category
+       leadership emerging within India. RARE in this pool. Requires
+       verifiable scale (e.g. >$1M ARR + multiple structural moats).
+  10 = Category-defining defensibility at global scale (planetary data
+       lead, regulatory monopoly, billion-user network effects).
+       ESSENTIALLY NEVER WARRANTED IN THIS POOL. Default to 8 or 9.
 
 ==================================================================================
 C) PROBLEM VALIDATION SCORING
@@ -311,38 +473,55 @@ Evaluate ALL of these dimensions, then assign one integer 1-10:
   (f) Evidence of demand: traction (paying users, MRR, waitlist), cited user
       research, testimonials, analogous market signals.
 
-PER-INTEGER PROBLEM ANCHORS (memorize these — score by closest match):
-   1 = Solution looking for a problem; founder can't articulate WHO has it
-       or WHY. Example: "an app that combines your mood, your dog's mood,
-       and your friends' moods into one feed."
-   2 = Hypothetical / preachy problem; no demand, no spend, no validation.
-       Example: "people should drink more water" — true, but nobody pays.
-   3 = Real but minor; existing free tools / habits cover it. Example: "I
-       want a slightly nicer calendar app" in a market with 50 of them.
-   4 = Real problem affecting a definable group, but workarounds are
-       acceptable; few would actively pay. Example: "small teams can't
-       pick a single project tool" (Notion/Trello/etc. are good enough).
-   5 = Real, founder shows some validation (interviews, waitlist), clear
-       target user but moderate intensity; no significant existing spend
-       yet. Example: "Indian D2C founders need better influencer-analytics."
-   6 = Strong validation, growing willingness-to-pay; customers ARE
-       spending money on inferior solutions today; early paying traction.
-       Example: "SMBs in India can't get fast working-capital loans
-       without 3 weeks of paperwork."
-   7 = Severe, frequent pain with documented existing spend on workarounds;
-       founder shows deep customer empathy AND concrete demand signals
-       (paying users, growing MRR, testimonials). Example: "Indian gig
-       workers have no access to short-term healthcare financing."
-   8 = Universal pain in a large cohort; clear evidence of serious money
-       being spent on inferior solutions today; strong traction from day 1.
-       Example: "Indian SMBs can't accept online payments without a 6-week
-       bank setup" (Razorpay/Stripe early).
-   9 = Painfully obvious-in-hindsight problem affecting massive cohorts;
-       founder lived the problem; near-immediate demand once solution ships.
-       Example: "Most adults in Kenya can't access basic banking" (M-Pesa).
+PER-INTEGER PROBLEM ANCHORS (memorize these — score by closest match;
+each anchor is calibrated to startups actually found in this pool):
+
+   1 = Solution looking for a problem; founder can't articulate WHO has
+       it, WHEN, or WHY. Example: "an app that combines 3 random things
+       no one asked for"; vague TG like "for everyone".
+   2 = Hypothetical / preachy ("people should X"); zero evidence of
+       demand or spend; no validation conversations cited. Example:
+       "people should drink more water" — true, but nobody pays.
+   3 = Real but minor; existing free tools or habits cover it adequately;
+       few would actively pay. Example: another mood-journal app;
+       fancier reminder tool in a saturated category.
+   4 = MOST COMMON FOR EARLY-STAGE in this pool: a real problem with
+       a definable user, but no concrete validation evidence — no
+       interviews cited, no waitlist size, no MRR, no named pilot.
+       Pre-MVP/Ideation stage rows almost always belong here unless
+       they have something extraordinary. Example: "small teams need
+       a single project tool" when Notion/Trello are good enough; an
+       MVP-stage startup with founder narrative but zero traction.
+   5 = Real problem WITH some genuine validation: founder cites specific
+       interview counts, has a waitlist with a stated number (>50), or
+       has 1-4 named pilot customers (no MRR yet). Not just "we talked
+       to users" but actual evidence the validation happened. If you
+       can't find a specific number / name in the founder text or deck,
+       this is NOT a 5 — it's a 4.
+   6 = Above pool median — clear painful problem + customers ARE paying
+       for inferior workarounds today + EARLY paying traction (e.g.
+       <₹2L MRR with growing customers, or 5+ named pilot customers).
+       Example: "Indian SMBs paying CAs ₹15K/mo for monthly compliance
+       when software could automate it" + 5 paying pilots.
+   7 = Top quartile — SEVERE + FREQUENT pain WITH ALL THREE:
+       (i) >₹2L MRR growing OR >5 named paying customers
+       (ii) cited PER-CUSTOMER existing spend on workarounds (specific
+            rupee amount, NOT sector-wide market data)
+       (iii) repeat-customer behavior or strong retention signal
+       Industry reports alone do NOT qualify. Example: "Indian gig
+       workers have no access to instant healthcare financing" + ₹3L MRR
+       from 200 customers + 20% MoM + cited current spend of ₹5K/yr
+       per worker on unsecured loans.
+   8 = Top 10% — universal pain + STRONG TRACTION. REQUIRES e.g.
+       >₹10L/mo MRR, OR national-scale partnerships with named entities,
+       OR multiple signed enterprise contracts. The startup-specific
+       traction must be verifiable; sector size does NOT substitute.
+   9 = Top 3% — painfully obvious-in-hindsight + near-immediate demand
+       once solution ships + significant scale already proven (e.g.
+       ₹50L+ MRR, OR 10K+ active paying users). RARE in this pool.
   10 = Generational-level pain; absence of solution is itself a crisis;
-       users will do almost anything to solve it. Example: "I can't get a
-       taxi when I need one" pre-Uber in any major city.
+       users will do anything to solve it. Reserve for "this is THE
+       story of the decade" — ESSENTIALLY NEVER WARRANTED IN THIS POOL.
 
 ==================================================================================
 OUTPUT
@@ -378,8 +557,8 @@ All scores MUST be integers in [1, 10]. All confidence values MUST be one of
   "problem_score": 5,
   "problem_why_not_lower": "A score of 4 would mean a real problem but with acceptable workarounds. This startup is BETTER than a 4 because [reference the score-X-1 anchor].",
   "problem_why_not_higher": "A score of 6 would mean strong validation + customers already paying for inferior solutions. This startup falls SHORT because [reference the score-X+1 anchor].",
-  "problem_severity": "high | medium | low",
-  "problem_frequency": "daily | weekly | monthly | yearly | continuous | one-time | unclear",
+  "problem_severity": "Pick EXACTLY ONE: high | medium | low. Do NOT hyphenate or combine (e.g. 'medium-high' is invalid).",
+  "problem_frequency": "Pick EXACTLY ONE: daily | weekly | monthly | yearly | continuous | one-time | unclear. If pain is multi-frequency, pick the most relevant single value. Do NOT combine values.",
   "existing_willingness_to_pay": "Brief: are people already spending on this? Workarounds? Quote a dollar amount or alternative if possible.",
   "demand_evidence": "Concrete evidence: traction numbers, testimonials, analogous market data. If problem_score >= 7, this MUST be substantive (30+ chars).",
   "problem_red_flags": "e.g. 'solution looking for a problem', 'vague TG', 'no demand evidence', or 'none observed'",
@@ -582,8 +761,11 @@ def _http_code(err) -> int | None:
 
 
 def _gemini_call(contents, max_retries: int = 5) -> dict:
+    # Lower temperature pushes the model to follow the explicit rubric/evidence
+    # gates more strictly instead of drifting to a "polite mid-high" default.
     config = types.GenerateContentConfig(
-        tools=[types.Tool(google_search=types.GoogleSearch())]
+        tools=[types.Tool(google_search=types.GoogleSearch())],
+        temperature=0.3,
     )
     base_delay = 10
     last_err = None
