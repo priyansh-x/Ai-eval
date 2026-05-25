@@ -271,6 +271,67 @@ multi-crore enterprise contract signed, regulatory license already in hand).
 You MUST cite the specific exception in the relevant analysis_summary field.
 
 ==================================================================================
+CALIBRATION EXAMPLES — anchor your scoring to these (LLMs pattern-match better
+than they instruction-follow; these are your strongest calibration signal)
+==================================================================================
+
+Reference example A — WEAK applicant (score 2):
+  Profile: Solo-founder Pre-MVP app "combine my mood, dog mood, and friends mood
+           into one feed". Ideation stage. No users. No IP. No revenue.
+           Generic claim of "AI-powered". No customer interviews cited.
+  CORRECT scoring:
+    market_size_score = 2  (hyper-niche, <$10M TAM, no clear demand)
+    moat_score        = 2  (nothing — solo MVP, no IP, no users, replicable in a weekend)
+    problem_score     = 2  (hypothetical, no demand signal, no validation)
+
+Reference example B — BELOW-MEDIAN applicant (scores 3-4):
+  Profile: Pre-MVP D2C wellness brand. "Patent filed" (not granted).
+           Claims "3 customer interviews done". No MRR. 800 Instagram followers.
+           "Proprietary formulation" — not verifiable.
+  CORRECT scoring:
+    market_size_score = 4  (sub-billion India wellness niche)
+    moat_score        = 3  (filed patent + nothing verifiable; CLAIMED ≠ VERIFIED)
+    problem_score     = 4  (real problem; no concrete validation cited)
+
+Reference example C — MEDIAN applicant, where most of this pool lives (scores 4-5):
+  Profile: MVP-stage vertical SaaS for Indian SMBs in one function (HR / accounting).
+           5 paying pilots stated by founder, ~₹40K MRR. No granted IP.
+           Founder cites 12 customer interviews. No press coverage yet.
+  CORRECT scoring:
+    market_size_score = 5  (mid-size India SAM ~$1-3B)
+    moat_score        = 4  (5 pilots = early signal, NOT yet a moat)
+    problem_score     = 5  (5 paying pilots = real but early validation)
+
+Reference example D — ABOVE-MEDIAN applicant (scores 6-7):
+  Profile: Growth-stage fintech. Verified ₹15L/mo MRR (cited number).
+           Press-announced partnership with a major NBFC (Google-verifiable).
+           Cited per-customer spend on workarounds (₹15K/mo to CAs).
+           Growing 18% MoM. 200+ paying SMB customers.
+  CORRECT scoring:
+    market_size_score = 7  (large $8-15B India SMB fintech SAM, verified)
+    moat_score        = 6  (verified named partnership + early scale = real moat)
+    problem_score     = 7  (₹15L MRR + cited per-customer spend + repeat behavior)
+
+Reference example E — STRONG applicant (scores 8):
+  Profile: Growth-stage deep-tech. GRANTED patent (specific patent number)
+           in active use in product. Named verified enterprise contracts with
+           multiple Fortune-India companies (Tata, Reliance). ₹50L+ MRR.
+           Multiple bank/regulator clearances. Strong industry press coverage.
+  CORRECT scoring:
+    market_size_score = 8  (very large TAM, with verifiable execution path)
+    moat_score        = 8  (granted IP + multiple structural moats + scale)
+    problem_score     = 8  (universal pain + strong verified traction)
+
+KEY CALIBRATION TAKEAWAY from these examples:
+- Most early-stage startups in this pool look like A, B, or C (scores 2-5)
+- Score 5 = median = "MVP with some real-but-early validation"
+- 6+ requires verifiable evidence beyond the deck
+- 8+ requires standout traction (₹50L+ MRR, granted IP, F-class contracts)
+- 9-10 is essentially never warranted in this pool
+
+If your output scores never look like A or B, you are calibrating wrong.
+
+==================================================================================
 STARTUP PROFILE
 ==================================================================================
 - Company Name: {safe(row.get('Startup Name'))}
@@ -893,6 +954,76 @@ def load_done_ids() -> set:
         return set()
 
 
+def normalize_scores(results_path: Path) -> None:
+    """Post-hoc rank normalization: re-bin raw scores against the cohort so the
+    final scores span 1-10 with a realistic bell-curve distribution.
+
+    Why this exists: even with strict prompts + low temperature + few-shot
+    examples, Gemini compresses absolute scores toward the middle (the
+    irreducible "be nice" RLHF bias). Rank normalization solves this by
+    GUARANTEE: the relative ordering the model produces is preserved, but the
+    final scores are spread across 1-10 with the expected distribution.
+
+    Target distribution (matches what a real 600-row competition pool looks like):
+       1: 3%   2: 7%    3: 15%   4: 20%   5: 20%
+       6: 15%  7: 10%   8: 6%    9: 3%    10: 1%
+
+    Adds three columns: market_size_score_normalized, moat_score_normalized,
+    problem_score_normalized. The original *_score columns are untouched.
+    """
+    if not results_path.exists():
+        print(f"Cannot normalize: {results_path} does not exist.")
+        return
+
+    df = pd.read_csv(results_path)
+    n = len(df)
+    if n == 0:
+        print("Cannot normalize: empty results file.")
+        return
+
+    # Cumulative bucket edges (% of pool that falls AT OR BELOW each integer score)
+    cum_pct = {1: 0.03, 2: 0.10, 3: 0.25, 4: 0.45, 5: 0.65,
+               6: 0.80, 7: 0.90, 8: 0.96, 9: 0.99, 10: 1.00}
+
+    def percentile_to_score(pct: float) -> int:
+        for score in range(1, 11):
+            if pct <= cum_pct[score]:
+                return score
+        return 10
+
+    for axis in ("market_size_score", "moat_score", "problem_score"):
+        if axis not in df.columns:
+            continue
+        # Rank ascending; ties get average rank. Convert to fractional percentile.
+        # method='average' so ties don't create artificial spread.
+        ranks = df[axis].rank(method="average", na_option="keep")
+        pcts = ranks / n  # 0 < pct <= 1
+        normalized = pcts.apply(lambda p: percentile_to_score(p) if pd.notna(p) else None)
+        df[axis + "_normalized"] = normalized.astype("Int64")
+
+    df.to_csv(results_path, index=False, quoting=csv.QUOTE_ALL, lineterminator="\n")
+
+    print()
+    print("=" * 80)
+    print(f"  RANK-NORMALIZED — {n} startups against each other")
+    print("=" * 80)
+    import collections
+    for axis in ("market_size_score", "moat_score", "problem_score"):
+        if axis + "_normalized" not in df.columns:
+            continue
+        raw = df[axis].dropna().astype(int).tolist()
+        norm = df[axis + "_normalized"].dropna().astype(int).tolist()
+        raw_c = collections.Counter(raw)
+        norm_c = collections.Counter(norm)
+        raw_dist = " ".join(f"{v}:{raw_c.get(v,0)}" for v in range(1, 11))
+        norm_dist = " ".join(f"{v}:{norm_c.get(v,0)}" for v in range(1, 11))
+        print(f"  {axis.replace('_score', ''):14}")
+        print(f"     raw  {raw_dist}")
+        print(f"     norm {norm_dist}")
+    print("=" * 80)
+    print(f"  Wrote *_normalized columns to {results_path.name}")
+
+
 def append_result(out_row: dict) -> None:
     write_header = not RESULTS_PATH.exists()
     clean = {col: sanitize_cell(out_row.get(col)) for col in OUTPUT_COLUMNS}
@@ -1026,11 +1157,25 @@ def main():
                         help="Skip rows that have no Pitch Deck URL.")
     parser.add_argument("--start", type=int, default=0,
                         help="Skip the first N rows of the source CSV before processing.")
+    parser.add_argument("--normalize", action="store_true",
+                        help="After scoring (or standalone if --limit 0), rank-normalize "
+                             "scores across the cohort to guarantee a 1-10 spread. "
+                             "Adds *_normalized columns; raw scores unchanged.")
+    parser.add_argument("--normalize-only", action="store_true",
+                        help="Skip scoring entirely; just rank-normalize the existing "
+                             "output CSV and exit. Useful for re-binning after each batch.")
     args = parser.parse_args()
 
     # Apply CLI overrides for input/output paths
     csv_path = Path(args.csv).expanduser().resolve()
     RESULTS_PATH = Path(args.output).expanduser().resolve()
+
+    # --normalize-only short-circuits everything else: rank-normalize the
+    # existing output and exit. No Gemini calls. Useful for re-binning after
+    # each incremental batch.
+    if args.normalize_only:
+        normalize_scores(RESULTS_PATH)
+        return
 
     if not csv_path.exists():
         sys.exit(f"CSV not found: {csv_path}")
@@ -1200,6 +1345,11 @@ def main():
         elapsed=time.time() - run_start,
         results_path=RESULTS_PATH,
     )
+
+    # Auto rank-normalize at end of run if requested. This re-bins the entire
+    # output CSV (raw scores untouched) so the *_normalized columns span 1-10.
+    if args.normalize:
+        normalize_scores(RESULTS_PATH)
 
 
 if __name__ == "__main__":

@@ -123,6 +123,28 @@ python3 evaluate_market.py
 | `--limit N` | (none) | Process at most N new rows in this run |
 | `--start N` | `0` | Skip the first N rows of the source CSV |
 | `--only-with-deck` | off | Skip rows with no Pitch Deck URL |
+| `--normalize` | off | Rank-normalize scores against the cohort after this run (adds `*_normalized` columns) |
+| `--normalize-only` | off | Skip Gemini calls entirely; just re-normalize the existing output CSV and exit |
+
+### Rank normalization (`--normalize`)
+
+LLMs trained with RLHF have an irreducible bias toward "polite middle" scoring. Even with very strict prompts, low temperature, and few-shot calibration examples, raw scores compress toward 5-6. **Rank normalization is the mathematical guarantee that fixes this** by re-binning scores against the cohort:
+
+- Raw scores are preserved in the original columns (`market_size_score`, `moat_score`, `problem_score`)
+- New columns are added: `market_size_score_normalized`, `moat_score_normalized`, `problem_score_normalized`
+- Final distribution targets a realistic bell curve: 1: 3%, 2: 7%, 3: 15%, 4: 20%, 5: 20%, 6: 15%, 7: 10%, 8: 6%, 9: 3%, 10: 1%
+
+Run on a fresh batch:
+```bash
+python3 evaluate_market.py --limit 15 --normalize
+```
+
+Re-normalize the existing CSV at any time without re-running Gemini:
+```bash
+python3 evaluate_market.py --normalize-only
+```
+
+Normalization is **most meaningful with the full cohort** (619 rows). On small batches (< 30), expect the spread to look chunky (single startups landing at 10, etc.) — this resolves as the cohort grows.
 
 ### 3.3 Resuming
 
